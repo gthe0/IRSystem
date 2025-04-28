@@ -19,6 +19,7 @@ buildNumber.properties
 *.log
 *.json
 results
+resources/
 
 ####################################
 # Don't Ignore the following
