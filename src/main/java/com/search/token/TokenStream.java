@@ -5,6 +5,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashSet;
 
+import mitos.stemmer.Stemmer;
+
 public abstract class TokenStream implements Closeable {
     protected BufferedReader reader; 
     private String currentLine;      
@@ -41,7 +43,7 @@ public abstract class TokenStream implements Closeable {
             tokens = tokenize(currentLine);
             tokenIndex = 0; 
         }
-        return tokens[tokenIndex++]; // Return the next token
+        return Stemmer.Stem(tokens[tokenIndex++]); // Return the next token
     }
 
     // Closes the reader to release resources
