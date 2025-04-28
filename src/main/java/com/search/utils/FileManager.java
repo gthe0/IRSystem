@@ -7,10 +7,10 @@ import java.util.List;
 
 public class FileManager {
 
-    private static final String PARENT_DIR   = System.getProperty("user.dir") + File.separator;
-    private static final String RESOURCE_DIR = PARENT_DIR + "src" + File.separator + "main" + File.separator + "resources" + File.separator;
+    private static final String PARENT_DIR    = System.getProperty("user.dir") + File.separator;
+    private static final String RESOURCE_DIR  = PARENT_DIR + "src" + File.separator + "main" + File.separator + "resources" + File.separator;
     
-    private static final int DEFAULT_DEPTH = 10;
+    private static final int    DEFAULT_DEPTH = 10;
     
     public static String showFileChooser(boolean selectFile) {
         JFileChooser fileChooser = new JFileChooser();
@@ -25,7 +25,7 @@ public class FileManager {
         fileChooser.setCurrentDirectory(initialDirectory);
     
         fileChooser.setFileSelectionMode(selectFile ? JFileChooser.FILES_ONLY : JFileChooser.DIRECTORIES_ONLY);
-        fileChooser.setDialogTitle("Select a Directory");
+        fileChooser.setDialogTitle(selectFile ? "Select a File" : "Select a Directory");
         fileChooser.setAcceptAllFileFilterUsed(false);
     
         int result = fileChooser.showOpenDialog(null);

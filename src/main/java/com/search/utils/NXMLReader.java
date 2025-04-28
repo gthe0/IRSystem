@@ -7,7 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.search.index.Document;
-import com.search.index.Field;
+import com.search.index.FieldFactory;
+import com.search.index.FieldType;
 
 public class NXMLReader {
 
@@ -19,14 +20,14 @@ public class NXMLReader {
         Document document = new Document();
 
         // Add fields to the document
-        document.addField(new Field("AA", xmlFile.getTitle()));
-        document.addField(new Field("AA", xmlFile.getAbstr()));
-        document.addField(new Field("AA", xmlFile.getBody()));
-        document.addField(new Field("AA", xmlFile.getJournal()));
-        document.addField(new Field("AA", xmlFile.getPublisher()));
-        document.addField(new Field("AA", xmlFile.getPMCID()));
-        document.addField(new Field("AA", xmlFile.getAuthors()));
-        document.addField(new Field("AA", xmlFile.getCategories()));
+        document.addField( FieldFactory.createField(FieldType.TITLE,     xmlFile.getTitle()));
+        document.addField( FieldFactory.createField(FieldType.ABSTRACT,  xmlFile.getAbstr()));
+        document.addField( FieldFactory.createField(FieldType.BODY,      xmlFile.getBody()));
+        document.addField( FieldFactory.createField(FieldType.JOURNAL,   xmlFile.getJournal()));
+        document.addField( FieldFactory.createField(FieldType.PUBLISHER, xmlFile.getPublisher()));
+        document.addField( FieldFactory.createField(FieldType.PMCID,     xmlFile.getPMCID()));
+        document.addField( FieldFactory.createField(FieldType.AUTHOR,    xmlFile.getAuthors().toString()));
+        document.addField( FieldFactory.createField(FieldType.CATEGORY,  xmlFile.getCategories().toString()));
 
         return document;
     }

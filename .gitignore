@@ -19,7 +19,7 @@ buildNumber.properties
 *.log
 *.json
 results
-resources/
+MiniCollection/
 
 ####################################
 # Don't Ignore the following
