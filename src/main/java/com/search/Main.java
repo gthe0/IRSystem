@@ -10,20 +10,24 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
 
-    private static final int BATCH_SIZE = 0x200;
-    private static final int NUM_PROCESSING_THREADS = Runtime.getRuntime().availableProcessors();
-    private static final ExecutorService processingExecutor = Executors.newFixedThreadPool(NUM_PROCESSING_THREADS);
+    // Conservative batch size for 2GB heap
+    private static final int BATCH_SIZE = 0x200; 
+    
+    // Exactly two threads - one for processing, one for writing
+    private static final ExecutorService processingExecutor = Executors.newSingleThreadExecutor();
     private static final ExecutorService fileWritingExecutor = Executors.newSingleThreadExecutor();
     
-    // Synchronization lock for document creation
-    private static final Object documentCreationLock = new Object();
+    // Track active batches to prevent memory overload
+    private static final Semaphore memorySemaphore = new Semaphore(2); // Allow 2 batches in memory
 
     public static void main(String[] args) {
         try {
+            System.out.println("JVM Memory: " + Runtime.getRuntime().maxMemory() / (1024 * 1024) + "MB");
+            System.out.println("Using conservative batch size: " + BATCH_SIZE);
+            
             System.out.println("Select the directory containing stopword files:");
             File stopwordDirectory = FileManager.showFileChooserForDirectory();
             StopWordManager.loadStopWords(stopwordDirectory);
@@ -31,78 +35,65 @@ public class Main {
             System.out.println("Select the directory containing the XML documents:");
             File documentDirectory = FileManager.showFileChooserForDirectory();
 
-            // Create a completion service for processing batches
-            CompletionService<BatchResult> completionService = 
-                new ExecutorCompletionService<>(processingExecutor);
-
             FileBatchIterator fileBatchIterator = FileManager.getFileBatchIterator(documentDirectory, BATCH_SIZE);
-            AtomicInteger batchNo = new AtomicInteger(0);
-            int totalBatches = 0;
+            List<Future<?>> futures = new ArrayList<>();
 
-            // Submit all batches for processing
             while (fileBatchIterator.hasNext()) {
                 final List<Path> xmlFiles = fileBatchIterator.next();
-                final int currentBatchNo = batchNo.getAndIncrement();
+                final int currentBatchNo = futures.size();
                 
-                completionService.submit(() -> {
+                // Wait for memory availability
+                memorySemaphore.acquire();
+                
+                futures.add(processingExecutor.submit(() -> {
                     try {
-                        List<Document> documents = new ArrayList<>();
+                        System.out.println("Processing batch " + currentBatchNo + " (" + xmlFiles.size() + " files)");
                         
+                        // Process documents sequentially (stemmer limitation)
+                        List<Document> documents = new ArrayList<>();
                         for (Path xmlFile : xmlFiles) {
-                            synchronized (documentCreationLock) {
-                                try {
-                                    Document doc = DocumentFactory.createDocument(xmlFile.toFile());
-                                    documents.add(doc);
-                                } catch (Exception e) {
-                                    System.err.println("Error processing file in batch " + currentBatchNo + 
-                                                     ": " + xmlFile);
-                                    e.printStackTrace();
-                                }
+                            try {
+                                Document doc = DocumentFactory.createDocument(xmlFile.toFile());
+                                documents.add(doc);
+                            } catch (Exception e) {
+                                System.err.println("Error processing file in batch " + currentBatchNo + ": " + xmlFile);
+                                e.printStackTrace();
                             }
                         }
                         
                         if (!documents.isEmpty()) {
                             Corpus corpus = new Corpus();
                             corpus.addDocuments(documents);
-                            return new BatchResult(currentBatchNo, corpus, documents.size());
+                            
+                            // Submit writing task
+                            fileWritingExecutor.submit(() -> {
+                                try {
+                                    FileBuilder postingFileBuilder = new FileBuilder(currentBatchNo);
+                                    postingFileBuilder.createBatchFiles(corpus);
+                                    System.out.println("Batch " + currentBatchNo + " written successfully");
+                                    
+                                    // Clear memory
+                                    corpus.clear();
+                                } catch (Exception e) {
+                                    System.err.println("Error writing batch " + currentBatchNo);
+                                    e.printStackTrace();
+                                } finally {
+                                    memorySemaphore.release();
+                                }
+                            });
+                        } else {
+                            memorySemaphore.release();
                         }
-                        return null;
                     } catch (Exception e) {
                         System.err.println("Error processing batch " + currentBatchNo);
                         e.printStackTrace();
-                        return null;
+                        memorySemaphore.release();
                     }
-                });
-                totalBatches++;
+                }));
             }
 
-            // Process results as they complete and submit for file writing
-            List<Future<?>> fileWriteFutures = new ArrayList<>();
-            for (int i = 0; i < totalBatches; i++) {
-                try {
-                    Future<BatchResult> future = completionService.take();
-                    BatchResult result = future.get();
-                    if (result != null) {
-                        // Submit file writing to single-threaded executor
-                        fileWriteFutures.add(fileWritingExecutor.submit(() -> {
-                            try {
-                                FileBuilder postingFileBuilder = new FileBuilder(result.batchNo);
-                                postingFileBuilder.createBatchFiles(result.corpus);
-                                System.out.println("Batch " + result.batchNo + " (" + 
-                                                 result.fileCount + " files) processed successfully.");
-                            } catch (Exception e) {
-                                System.err.println("Error writing batch " + result.batchNo);
-                                e.printStackTrace();
-                            }
-                        }));
-                    }
-                } catch (InterruptedException | ExecutionException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            // Wait for all file writing to complete
-            for (Future<?> future : fileWriteFutures) {
+            // Wait for completion
+            for (Future<?> future : futures) {
                 try {
                     future.get();
                 } catch (InterruptedException | ExecutionException e) {
@@ -110,9 +101,8 @@ public class Main {
                 }
             }
 
-            System.out.println("All batches processed successfully.");
-
-            // Final merging (single-threaded)
+            // Final merging
+            System.out.println("Starting final merge...");
             List<FileCollector.FilePair> filePairs = FileCollector.collectFilePairs(
                 FileBuilder.VOC_DIR, 
                 FileBuilder.POSTING_DIR
@@ -129,35 +119,44 @@ public class Main {
             FileMerger.mergeFiles(FileManager.RESULT_DIR + File.separator + "CollectionIndex", 
                                  vocabularyFiles, postingFiles);
 
+            System.out.println("Processing complete!");
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            processingExecutor.shutdown();
-            fileWritingExecutor.shutdown();
-            try {
-                if (!processingExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
-                    processingExecutor.shutdownNow();
-                }
-                if (!fileWritingExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
-                    fileWritingExecutor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                processingExecutor.shutdownNow();
-                fileWritingExecutor.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
+            shutdownExecutors();
         }
     }
 
-    private static class BatchResult {
-        final int batchNo;
-        final Corpus corpus;
-        final int fileCount;
+    private static void checkMemory() {
+        Runtime runtime = Runtime.getRuntime();
+        long used = runtime.totalMemory() - runtime.freeMemory();
+        long max = runtime.maxMemory();
+        double percentageUsed = (double) used / max * 100;
+        
+        System.out.printf("Memory: %.1f%% used (%,dMB/%,dMB)%n",
+                        percentageUsed,
+                        used / (1024 * 1024),
+                        max / (1024 * 1024));
+        
+        if (percentageUsed > 75) {
+            System.gc();
+            System.out.println("Triggered GC");
+        }
+    }
 
-        BatchResult(int batchNo, Corpus corpus, int fileCount) {
-            this.batchNo = batchNo;
-            this.corpus = corpus;
-            this.fileCount = fileCount;
+    private static void shutdownExecutors() {
+        processingExecutor.shutdown();
+        fileWritingExecutor.shutdown();
+        try {
+            if (!processingExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
+                processingExecutor.shutdownNow();
+            }
+            if (!fileWritingExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
+                fileWritingExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }

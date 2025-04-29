@@ -9,9 +9,11 @@ import java.util.*;
 public class FileBuilder {
     private static final String POSTING_FILE_NAME = "PostingFile_Batch_";
     private static final String VOCABULARY_FILE_NAME = "VocabularyFile_Batch_";
+    private static final String DOCUMENT_FILE_NAME = "DocumentFile_Batch_";
 
     public static final String POSTING_DIR = FileManager.RESULT_DIR + File.separator + "tempPost" + File.separator;
     public static final String VOC_DIR = FileManager.RESULT_DIR + File.separator + "tempVoc" + File.separator;
+    public static final String DOC_DIR = FileManager.RESULT_DIR + File.separator + "tempDoc" + File.separator;
     
     private final int batchNumber;
 
@@ -20,37 +22,46 @@ public class FileBuilder {
     }
 
     public void createBatchFiles(Corpus corpus) throws IOException {
-        String postingFilePath =  POSTING_DIR + File.separator + POSTING_FILE_NAME + batchNumber + ".txt";
-        String vocabularyFilePath =  VOC_DIR + File.separator + VOCABULARY_FILE_NAME + batchNumber + ".txt";
-
+        // Ensure all directories exist
         FileManager.ensureDirectoryExists(POSTING_DIR);
         FileManager.ensureDirectoryExists(VOC_DIR);
+        FileManager.ensureDirectoryExists(DOC_DIR);
+
+        // Create file paths
+        String postingFilePath = POSTING_DIR + POSTING_FILE_NAME + batchNumber + ".txt";
+        String vocabularyFilePath = VOC_DIR + VOCABULARY_FILE_NAME + batchNumber + ".txt";
+        String documentFilePath = DOC_DIR + DOCUMENT_FILE_NAME + batchNumber + ".txt";
 
         try (
+            // Open all files for writing
             RandomAccessFile postingFile = new RandomAccessFile(postingFilePath, "rw");
-            BufferedWriter vocabWriter = new BufferedWriter(new FileWriter(vocabularyFilePath, StandardCharsets.UTF_8))
+            BufferedWriter vocabWriter = new BufferedWriter(new FileWriter(vocabularyFilePath, StandardCharsets.UTF_8));
+            BufferedWriter docWriter = new BufferedWriter(new FileWriter(documentFilePath, StandardCharsets.UTF_8))
         ) {
             Vocabulary vocabulary = corpus.getVocabulary(); 
             long pointer = 0;
 
+            // First write all document metadata
+            for (Document document : corpus) {
+                docWriter.write(document.getPmcdId() + " " + document.getDocPath() + "\n");
+            }
+
+            // Then process vocabulary and postings
             for (String term : vocabulary.getSortedTerms()) {
-                Set<Integer> docIds = vocabulary.getDocumentIds(term); // Get all document IDs for this term
+                Set<Integer> docIds = vocabulary.getDocumentIds(term);
                 int df = docIds.size(); 
 
-                // Write postings for the term to the Posting File
+                // Write postings for the term
                 for (Integer docId : docIds) {
                     Document document = corpus.getDocument(docId);
-
-                    // Get term frequency for the document
                     int tf = document.getTf().get(term);
 
-                    // Build positional information for the term
+                    // Build positional information
                     StringBuilder positions = new StringBuilder("[");
                     for (FieldType fieldType : FieldType.values()) {
                         Field field = document.getField(fieldType);
                         if (field != null && field.getTermPositions().containsKey(term)) {
                             TreeSet<Integer> termPositions = field.getTermPositions().get(term);
-
                             for (Integer position : termPositions) {
                                 positions.append(fieldType.getFieldCode()).append(":").append(position).append(",");
                             }
@@ -64,13 +75,17 @@ public class FileBuilder {
                     postingFile.writeBytes(docId + " " + tf + " " + positions.toString() + "\n");
                 }
 
-                // Write term, df, and pointer to Vocabulary File
+                // Write vocabulary entry
                 vocabWriter.write(term + " " + df + " " + pointer + "\n");
                 pointer = postingFile.getFilePointer();
             }
         }
 
-        System.out.println("Posting File and Vocabulary File created for batch " + batchNumber + ".");
+        System.out.println("Created files for batch " + batchNumber + ":");
+        System.out.println("- Posting file: " + postingFilePath);
+        System.out.println("- Vocabulary file: " + vocabularyFilePath);
+        System.out.println("- Document file: " + documentFilePath);
+        
         corpus.clear();
     }
 }
