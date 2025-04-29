@@ -7,6 +7,5 @@ public enum FieldType {
     AUTHOR, 
     CATEGORY,
     JOURNAL,
-    PUBLISHER,
-    PMCID
+    PUBLISHER
 }

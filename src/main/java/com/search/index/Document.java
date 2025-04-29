@@ -8,20 +8,22 @@ public class Document {
     private HashMap<FieldType, Field> fieldMap;
     private TreeMap<String, Integer> tf; // Term frequencies passed in directly
     private String docPath;
+    private Integer pmcdId;
 
+    public Document(Integer pmcdId) {
+        this(pmcdId, null, new TreeMap<>());
+    }
+
+    public Document(Integer pmcdId, String docPath) {
+        this(pmcdId, docPath, new TreeMap<>());
+    }
+    
     // Constructor that initializes with document path and term frequencies
-    public Document(String docPath, TreeMap<String, Integer> docTf) {
+    public Document(Integer pmcdId, String docPath, TreeMap<String, Integer> docTf) {
         this.docPath = docPath;
+        this.pmcdId = pmcdId;
         this.tf = docTf != null ? docTf : new TreeMap<>();
         fieldMap = new HashMap<>();
-    }
-
-    public Document() {
-        this(null, new TreeMap<>());
-    }
-
-    public Document(String docPath) {
-        this(docPath, new TreeMap<>());
     }
 
     public void addField(Field field) {
@@ -34,6 +36,10 @@ public class Document {
 
     public String getDocPath() {
         return docPath;
+    }
+
+    public Integer getPmcdId() {
+        return pmcdId;
     }
 
     public TreeMap<String, Integer> getTf() {
@@ -65,9 +71,18 @@ public class Document {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+        
+        // Print the docPath and pmcdId
+        sb.append("Document Path: ").append(docPath != null ? docPath : "Unknown").append("\n");
+        sb.append("PMCID: ").append(pmcdId != null ? pmcdId : "Unknown").append("\n");
+        
+        // Print details for each field
+        sb.append("Fields:\n");
         for (Field field : fieldMap.values()) {
             sb.append(field.toString()).append("\n");
         }
+        
         return sb.toString();
     }
+    
 }

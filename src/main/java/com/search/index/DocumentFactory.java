@@ -1,6 +1,5 @@
 package com.search.index;
 
-
 import gr.uoc.csd.hy463.NXMLFileReader;
 import java.io.File;
 import java.io.IOException;
@@ -19,8 +18,7 @@ public class DocumentFactory {
         NXMLFileReader xmlFile = new NXMLFileReader(file);
 
         TreeMap<String, Integer> documentTf = new TreeMap<>();
-        Document                 document   = new Document(filePath, documentTf);
-
+        Document                 document   = new Document(Integer.parseInt(xmlFile.getPMCID()), filePath, documentTf);
 
         // Add fields to the document
         document.addField( new Field( FieldType.TITLE,     tokenizeContent(new SimpleTokenStream(xmlFile.getTitle()), documentTf)));
@@ -28,7 +26,6 @@ public class DocumentFactory {
         document.addField( new Field( FieldType.BODY,      tokenizeContent(new SimpleTokenStream(xmlFile.getBody()), documentTf)));
         document.addField( new Field( FieldType.JOURNAL,   tokenizeContent(new SimpleTokenStream(xmlFile.getJournal()), documentTf)));
         document.addField( new Field( FieldType.PUBLISHER, tokenizeContent(new SimpleTokenStream(xmlFile.getPublisher()), documentTf)));
-        document.addField( new Field( FieldType.PMCID,     tokenizeContent(new SimpleTokenStream(xmlFile.getPMCID()), documentTf)));
         document.addField( new Field( FieldType.AUTHOR,    tokenizeContent(new SimpleTokenStream(xmlFile.getAuthors().toString()), documentTf)));
         document.addField( new Field( FieldType.CATEGORY,  tokenizeContent(new SimpleTokenStream(xmlFile.getCategories().toString()), documentTf)));
 
