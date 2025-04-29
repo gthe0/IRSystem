@@ -11,14 +11,13 @@ import com.search.token.SimpleTokenStream;
 import com.search.token.TokenStream;
 
 public class DocumentFactory {
-
+    
     // Scan a single document
-    public static Document createDocument(String filePath) throws IOException {
-        File file = new File(filePath);
+    public static Document createDocument(File file) throws IOException {
         NXMLFileReader xmlFile = new NXMLFileReader(file);
 
         TreeMap<String, Integer> documentTf = new TreeMap<>();
-        Document                 document   = new Document(Integer.parseInt(xmlFile.getPMCID()), filePath, documentTf);
+        Document                 document   = new Document(Integer.parseInt(xmlFile.getPMCID()), file.getAbsolutePath(), documentTf);
 
         // Add fields to the document
         document.addField( new Field( FieldType.TITLE,     tokenizeContent(new SimpleTokenStream(xmlFile.getTitle()), documentTf)));
@@ -32,11 +31,12 @@ public class DocumentFactory {
         return document;
     }
 
+
     // Create a list of documents
-    public static List<Document> createDocuments(List<String> filepaths) throws IOException {
+    public static List<Document> createDocuments(List<File> files) throws IOException {
         ArrayList<Document> docs = new ArrayList<>();
-        for (String filepath : filepaths) {
-            docs.add(createDocument(filepath));
+        for (File file: files) {
+            docs.add(createDocument(file));
         }
         return docs;
     }

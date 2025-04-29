@@ -1,27 +1,24 @@
 package com.search.utils;
 
 import javax.swing.*;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FileManager {
 
-    public static final String PARENT_DIR   = System.getProperty("user.dir") + File.separator;
+    public static final String PARENT_DIR = System.getProperty("user.dir") + File.separator;
     public static final String RESOURCE_DIR = PARENT_DIR + "src" + File.separator + "main" + File.separator + "resources" + File.separator;
-    public static final String RESULT_DIR   = PARENT_DIR + "src" + File.separator + "main" + File.separator + "results" + File.separator;
-    public static final int DEFAULT_DEPTH   = 10;
+    public static final String RESULT_DIR = PARENT_DIR + "src" + File.separator + "main" + File.separator + "results" + File.separator;
+    public static final int DEFAULT_DEPTH = 10;
 
-    // Show file or directory chooser based on mode
-    private static String showFileChooser(int selectionMode, String dialogTitle) {
+    // Shows a file or directory chooser based on mode
+    private static File showFileChooser(int selectionMode, String dialogTitle) {
         JFileChooser fileChooser = new JFileChooser();
 
-        // Set up initial directory
+        // Set initial directory
         File initialDirectory = new File(RESOURCE_DIR);
-        ensureDirectoryExists(initialDirectory.getAbsolutePath());
-        if (!initialDirectory.exists()) {
+        if (!ensureDirectoryExists(initialDirectory.getAbsolutePath())) {
             System.out.println("Resources directory not found. Defaulting to current working directory.");
             initialDirectory = new File(PARENT_DIR);
         }
@@ -33,28 +30,28 @@ public class FileManager {
 
         int result = fileChooser.showOpenDialog(null);
         if (result == JFileChooser.APPROVE_OPTION) {
-            return fileChooser.getSelectedFile().getAbsolutePath();
+            return fileChooser.getSelectedFile();
         }
 
-        System.out.println("No selection made. Returning default path.");
-        return RESOURCE_DIR;
+        System.out.println("No selection made.");
+        return null;
     }
 
     // Public method for file chooser
-    public static String showFileChooserForFile() {
+    public static File showFileChooserForFile() {
         return showFileChooser(JFileChooser.FILES_ONLY, "Select a File");
     }
 
     // Public method for directory chooser
-    public static String showFileChooserForDirectory() {
+    public static File showFileChooserForDirectory() {
         return showFileChooser(JFileChooser.DIRECTORIES_ONLY, "Select a Directory");
     }
 
-    // Get all files in a directory, up to a specified depth
-    public static List<String> getFilesInDirectory(String directoryPath) {
+    // Get all files in a directory up to a specified depth
+    public static List<File> getFilesInDirectory(File directory) {
         int depth = getDirectoryDepth();
-        List<String> fileList = new ArrayList<>();
-        exploreDirectory(new File(directoryPath), depth, 0, fileList);
+        List<File> fileList = new ArrayList<>();
+        exploreDirectory(directory, depth, 0, fileList);
         return fileList;
     }
 
@@ -73,7 +70,8 @@ public class FileManager {
         return depth;
     }
 
-    private static void exploreDirectory(File directory, int maxDepth, int currentDepth, List<String> fileList) {
+    // Recursive method to explore the directory and collect files
+    private static void exploreDirectory(File directory, int maxDepth, int currentDepth, List<File> fileList) {
         if (currentDepth > maxDepth || !directory.isDirectory()) {
             return;
         }
@@ -82,7 +80,7 @@ public class FileManager {
         if (files != null) {
             for (File file : files) {
                 if (file.isFile()) {
-                    fileList.add(file.getAbsolutePath());
+                    fileList.add(file); // Add File directly
                 } else if (file.isDirectory()) {
                     exploreDirectory(file, maxDepth, currentDepth + 1, fileList);
                 }
@@ -90,34 +88,33 @@ public class FileManager {
         }
     }
 
-    // Ensure a directory exists or create it
+    // Ensures a directory exists or creates it
     public static boolean ensureDirectoryExists(String directoryPath) {
         File directory = new File(directoryPath);
         if (!directory.exists()) {
             if (directory.mkdirs()) {
                 System.out.println("Created directory: " + directoryPath);
-                return true; // Directory created successfully
+                return true;
             } else {
                 System.err.println("Failed to create directory: " + directoryPath);
-                return false; // Directory creation failed
+                return false;
             }
         }
         return true; // Directory already exists
     }
 
-    // Create a file and write content to it
-    public static boolean createFile(String filePath, String content) {
+    // Creates a file and writes content to it
+    public static boolean createFile(File file, String content) {
         try {
-            File file = new File(filePath);
             ensureDirectoryExists(file.getParent()); // Ensure parent directory exists
             if (file.createNewFile() || file.exists()) {
-                try (FileWriter writer = new FileWriter(file)) {
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
                     writer.write(content);
-                    System.out.println("File created and content written: " + filePath);
+                    System.out.println("File created and content written: " + file.getAbsolutePath());
                 }
                 return true;
             } else {
-                System.err.println("Failed to create file: " + filePath);
+                System.err.println("Failed to create file: " + file.getAbsolutePath());
                 return false;
             }
         } catch (IOException e) {

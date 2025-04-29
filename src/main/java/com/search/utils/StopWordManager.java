@@ -10,8 +10,11 @@ public class StopWordManager {
     private static HashSet<String> stopWords = new HashSet<>();
 
     // Load stop words from files
-    public static void loadStopWords(String directoryPath) throws IOException {
-        File stopwordDir = new File(directoryPath);
+    public static void loadStopWords(File stopwordDir) throws IOException {
+        if (!stopwordDir.isDirectory()) {
+            throw new IOException("Provided path is not a directory: " + stopwordDir.getAbsolutePath());
+        }
+
         File[] files = stopwordDir.listFiles((dir, name) -> name.endsWith(".txt")); // Filter only .txt files
 
         if (files != null) {
@@ -24,7 +27,7 @@ public class StopWordManager {
                 }
             }
         } else {
-            throw new IOException("No stopword files found in the directory: " + directoryPath);
+            throw new IOException("No stopword files found in the directory: " + stopwordDir.getAbsolutePath());
         }
     }
 
