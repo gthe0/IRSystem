@@ -35,18 +35,26 @@ public class SimpleTokenStream extends TokenStream {
     @Override
     protected String[] tokenize(String line) {
         // Remove punctuation and split the line into tokens
-        String sanitizedLine = line.replaceAll("[\\p{Punct}]+", " ");
-        String[] strArray = sanitizedLine.split("\\s+");
+        String sanitizedLine = line.replaceAll("[\\p{Punct}]+", " ")
+                                   .replaceAll("\\s+", " ")
+                                   .toLowerCase();
+
+        String[] strArray = sanitizedLine.split(" ");
 
         // Filter out stop words if the set exists
         List<String> filteredTokens = new ArrayList<>();
         for (String token : strArray) {
-            token = token.toLowerCase();
-            if (!stopWords.contains(token)) { 
+            token = token.trim();
+            if (isValidUtf8(token)) { 
                 filteredTokens.add(token);
             }
         }
 
         return filteredTokens.toArray(new String[0]);
+    }
+
+    // Check that the term is utf8
+    private boolean isValidUtf8(String token) {
+        return !token.isEmpty() && token.matches("\\A\\p{ASCII}*|\\p{L}+\\z") && !stopWords.contains(token);
     }
 }

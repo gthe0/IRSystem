@@ -3,9 +3,9 @@ package com.search;
 import com.search.utils.FileManager;
 import com.search.utils.Indexer;
 import com.search.utils.StopWordManager;
+import com.search.index.Corpus;
 import com.search.index.Document;
 import com.search.index.DocumentFactory;
-import com.search.index.Vocabulary;
 
 import java.util.List;
 
@@ -23,16 +23,12 @@ public class Main {
             List<String> xmlFiles = FileManager.getFilesInDirectory(documentDirectory);
             List<Document> documents = DocumentFactory.createDocuments(xmlFiles);
 
-            // Create and use Indexer for processing
-            Indexer indexer = new Indexer();
-            Vocabulary vocabulary  = new Vocabulary();
+            // Create a corpus and add documents to it
+            Corpus corpus = new Corpus();
+            corpus.addDocuments(documents);
 
-            vocabulary.updateVocabulary(documents);
-            indexer.indexDocuments(vocabulary);
-
-            for (Document document : documents) {
-                document.printTermFrequencies();
-            }
+            // Use Indexer to process the corpus and export vocabulary
+            Indexer.indexDocuments(corpus);
 
         } catch (Exception e) {
             e.printStackTrace();

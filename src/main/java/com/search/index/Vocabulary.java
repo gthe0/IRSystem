@@ -1,8 +1,5 @@
 package com.search.index;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,16 +42,6 @@ public class Vocabulary {
     // Get all terms in lexicographic order
     public Set<String> getSortedTerms() {
         return new TreeSet<>(termToDocIds.keySet());
-    }
-
-    // Export the vocabulary to a file
-    public void exportVocabulary(String filePath) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-            for (String term : getSortedTerms()) {
-                int documentFrequency = getDocumentFrequency(term);
-                writer.write(term + " " + documentFrequency + "\n");
-            }
-        }
     }
 
     // Retrieve the set of document IDs for a given term
