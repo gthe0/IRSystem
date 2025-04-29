@@ -1,8 +1,8 @@
 package com.search;
 
-import com.search.utils.NXMLReader;
 import com.search.utils.FileManager;
 import com.search.utils.StopWordManager;
+import com.search.index.DocumentFactory;
 import com.search.index.Document;
 
 import java.util.List;
@@ -20,7 +20,7 @@ public class Main {
             String documentDirectory = FileManager.showFileChooser(false);
             List<String> xmlFiles = FileManager.getFilesInDirectory(documentDirectory);
 
-            List<Document> documents = NXMLReader.createDocument(xmlFiles);
+            List<Document> documents = DocumentFactory.createDocuments(xmlFiles);
 
             // Print term frequencies for each document
             for (Document document : documents) {

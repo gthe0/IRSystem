@@ -1,59 +1,27 @@
 package com.search.index;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
 public class Document {
     private HashMap<FieldType, Field> fieldMap;
+    private TreeMap<String, Integer> tf; // Term frequencies passed in directly
     private String docPath;
-    
-    private int calculateTotalFrequency(TreeMap<FieldType, Integer> fieldMap) {
-        return fieldMap.values().stream().mapToInt(Integer::intValue).sum();
-    }
 
-    private void printAggregatedTermFrequencies(TreeMap<String, TreeMap<FieldType, Integer>> aggregatedTF) {
-        for (Map.Entry<String, TreeMap<FieldType, Integer>> entry : aggregatedTF.entrySet()) {
-            String term = entry.getKey();
-            TreeMap<FieldType, Integer> fieldMap = entry.getValue();
-
-            int totalFrequency = calculateTotalFrequency(fieldMap);
-            System.out.println(term + ": " + totalFrequency);
-
-            for (Map.Entry<FieldType, Integer> fieldEntry : fieldMap.entrySet()) {
-                System.out.println(" - Field: " + fieldEntry.getKey() + ", Frequency: " + fieldEntry.getValue());
-            }
-        }
-    }
-
-    
-    // Private method to aggregate term frequencies
-    private TreeMap<String, TreeMap<FieldType, Integer>> aggregateTermFrequencies() {
-        TreeMap<String, TreeMap<FieldType, Integer>> aggregatedTF = new TreeMap<>();
-
-        for (Map.Entry<FieldType, Field> entry : fieldMap.entrySet()) {
-            FieldType fieldType = entry.getKey();
-            Field field = entry.getValue();
-
-            for (Map.Entry<String, Integer> termEntry : field.tf.entrySet()) {
-                String term = termEntry.getKey();
-                int frequency = termEntry.getValue();
-
-                // Add term to the aggregation map
-                aggregatedTF.putIfAbsent(term, new TreeMap<>());
-                aggregatedTF.get(term).put(fieldType, frequency);
-            }
-        }
-        return aggregatedTF;
+    // Constructor that initializes with document path and term frequencies
+    public Document(String docPath, TreeMap<String, Integer> docTf) {
+        this.docPath = docPath;
+        this.tf = docTf != null ? docTf : new TreeMap<>();
+        fieldMap = new HashMap<>();
     }
 
     public Document() {
-        this.docPath = null;
-        fieldMap = new HashMap<>();
+        this(null, new TreeMap<>());
     }
 
     public Document(String docPath) {
-        this.docPath = docPath;
-        fieldMap = new HashMap<>();
+        this(docPath, new TreeMap<>());
     }
 
     public void addField(Field field) {
@@ -68,6 +36,32 @@ public class Document {
         return docPath;
     }
 
+    public TreeMap<String, Integer> getTf() {
+        return tf;
+    }
+
+    // Print global frequency of each term, followed by its frequency in each field
+    public void printTermFrequencies() {
+        System.out.println("Term Frequencies for Document: " + (docPath != null ? docPath : "Unknown"));
+
+        for (Map.Entry<String, Integer> entry : tf.entrySet()) {
+            String term = entry.getKey();
+            int globalFrequency = entry.getValue();
+
+            System.out.println(term + ": " + globalFrequency); // Global frequency
+            System.out.println("  Frequencies by Field:");
+
+            for (Map.Entry<FieldType, Field> fieldEntry : fieldMap.entrySet()) {
+                FieldType fieldType = fieldEntry.getKey();
+                Field field = fieldEntry.getValue();
+
+                int fieldFrequency = field.tf.getOrDefault(term, 0);
+                System.out.println("    - Field Type: " + fieldType + ", Frequency: " + fieldFrequency);
+            }
+        }
+    }
+
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -76,13 +70,4 @@ public class Document {
         }
         return sb.toString();
     }
-  
-    // Public method to print term frequencies
-    public void printTermFrequencies() {
-        System.out.println("Term Frequencies for Document: " + (docPath != null ? docPath : "Unknown"));
-
-        TreeMap<String, TreeMap<FieldType, Integer>> aggregatedTF = aggregateTermFrequencies();
-        printAggregatedTermFrequencies(aggregatedTF);
-    }
-
 }

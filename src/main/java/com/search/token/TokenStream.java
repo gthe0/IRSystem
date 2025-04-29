@@ -22,6 +22,7 @@ public abstract class TokenStream implements Closeable {
         this.stopWords = new HashSet<>();
         this.tokenIndex = 0;
         this.tokens = new String[0];
+        Stemmer.Initialize();
     }
 
     // Constructor initializes the BufferedReader and loads stop words
