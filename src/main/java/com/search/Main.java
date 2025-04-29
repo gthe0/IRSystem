@@ -28,7 +28,7 @@ public class Main {
 
             // Define the batch size
             FileBatchIterator fileBatchIterator = FileManager.getFileBatchIterator(documentDirectory, BATCH_SIZE);
-
+            int batchNo = 0;
             while (fileBatchIterator.hasNext()) {
                 List<File> xmlFiles = fileBatchIterator.next();
                 List<Document> documents = DocumentFactory.createDocuments(xmlFiles);
@@ -36,12 +36,13 @@ public class Main {
                 Corpus corpus = new Corpus();
                 corpus.addDocuments(documents);
 
-                Indexer.indexDocuments(corpus);
+                Indexer.indexDocuments(corpus, batchNo++);
                 corpus.clear();
 
                 System.out.println("Batch of " + xmlFiles.size() + " files processed successfully.");
             }
-
+            
+            Indexer.mergeVocabularyFiles();
             System.out.println("All batches processed successfully.");
 
         } catch (Exception e) {
