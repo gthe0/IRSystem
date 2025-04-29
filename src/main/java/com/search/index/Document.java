@@ -3,6 +3,7 @@ package com.search.index;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class Document {
     private HashMap<FieldType, Field> fieldMap;
@@ -61,7 +62,8 @@ public class Document {
                 FieldType fieldType = fieldEntry.getKey();
                 Field field = fieldEntry.getValue();
 
-                int fieldFrequency = field.tf.getOrDefault(term, 0);
+                TreeSet<Integer> positions  = field.getTermPositions().get(term);
+                int fieldFrequency = (positions != null) ? positions.size() : 0;
                 System.out.println("    - Field Type: " + fieldType + ", Frequency: " + fieldFrequency);
             }
         }

@@ -1,17 +1,22 @@
 package com.search.index;
 
-import java.io.IOException;
-import java.util.TreeMap;
+import java.util.HashMap;
+import java.util.TreeSet;
 
 public class Field {
 
-    protected final TreeMap<String, Integer> tf; // Term Frequency Map
-    protected final FieldType type;              // Field type
+    protected final HashMap<String, TreeSet<Integer>> termPositions; // Map of term to positions
+    protected final FieldType type; // Field type
 
-    // Constructor that accepts an external TokenStream
-    public Field(FieldType type, TreeMap<String, Integer> tf) throws IOException {
-        this.tf = tf;
+    // Constructor that initializes term frequencies and positions
+    public Field(FieldType type, HashMap<String, TreeSet<Integer>> termPositions) {
+        this.termPositions = termPositions;
         this.type = type;
+    }
+
+    // Retrieve term positions
+    public HashMap<String, TreeSet<Integer>> getTermPositions() {
+        return termPositions;
     }
 
     public FieldType getType() {
@@ -20,6 +25,6 @@ public class Field {
 
     @Override
     public String toString() {
-        return "FieldType: " + type + ", Term Frequencies: " + tf.toString();
+        return "FieldType: " + type + ", Term Positions: " + termPositions.toString();
     }
 }

@@ -49,6 +49,13 @@ public class Corpus implements Iterable<Document> {
         return documents.size();
     }
 
+    // Clear the corpus t o release memory
+    public void clear() {
+        documents.clear();
+        vocabulary = new Vocabulary();
+        System.gc();
+    }
+
     // Make the corpus iterable (for-each loop)
     @Override
     public Iterator<Document> iterator() {

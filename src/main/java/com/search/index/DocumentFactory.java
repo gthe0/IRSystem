@@ -4,8 +4,10 @@ import gr.uoc.csd.hy463.NXMLFileReader;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import com.search.token.SimpleTokenStream;
 import com.search.token.TokenStream;
@@ -42,18 +44,24 @@ public class DocumentFactory {
     }
 
     // Common logic to process tokens using a TokenStream
-    private static TreeMap<String, Integer> tokenizeContent(
+    private static HashMap<String, TreeSet<Integer>> tokenizeContent(
         TokenStream tokenStream, 
         TreeMap<String, Integer> docTf) throws IOException
     {
         String token;
-        TreeMap<String, Integer> tf = new TreeMap<>();
+        HashMap<String, TreeSet<Integer>> termPositions = new HashMap<>();
 
+        Integer position = 0; 
         while ((token = tokenStream.getNext()) != null) {
-            tf.put(token, tf.getOrDefault(token, 0) + 1);
-            docTf.put(token, docTf.getOrDefault(token, 0) + 1);
+            token = token.trim();
+            if (!token.isEmpty()) {
+                termPositions.putIfAbsent(token, new TreeSet<>());
+                termPositions.get(token).add(position);
+                docTf.put(token, docTf.getOrDefault(token, 0) + 1);
+                position++;
+            }
         }
-
-        return tf;
+        
+        return termPositions;
     }
 }

@@ -6,11 +6,15 @@ import com.search.utils.StopWordManager;
 import com.search.index.Corpus;
 import com.search.index.Document;
 import com.search.index.DocumentFactory;
+import com.search.utils.FileBatchIterator;
 
 import java.io.File;
 import java.util.List;
 
 public class Main {
+
+    private static final int BATCH_SIZE = 100; 
+
     public static void main(String[] args) {
         try {
             // Load stop words once at the start
@@ -18,18 +22,27 @@ public class Main {
             File stopwordDirectory = FileManager.showFileChooserForDirectory();
             StopWordManager.loadStopWords(stopwordDirectory);
 
-            // Read documents from the selected directory
+            // Select the directory containing the XML documents
             System.out.println("Select the directory containing the XML documents:");
             File documentDirectory = FileManager.showFileChooserForDirectory();
-            List<File> xmlFiles = FileManager.getFilesInDirectory(documentDirectory);
-            List<Document> documents = DocumentFactory.createDocuments(xmlFiles);
 
-            // Create a corpus and add documents to it
-            Corpus corpus = new Corpus();
-            corpus.addDocuments(documents);
+            // Define the batch size
+            FileBatchIterator fileBatchIterator = FileManager.getFileBatchIterator(documentDirectory, BATCH_SIZE);
 
-            // Use Indexer to process the corpus and export vocabulary
-            Indexer.indexDocuments(corpus);
+            while (fileBatchIterator.hasNext()) {
+                List<File> xmlFiles = fileBatchIterator.next();
+                List<Document> documents = DocumentFactory.createDocuments(xmlFiles);
+
+                Corpus corpus = new Corpus();
+                corpus.addDocuments(documents);
+
+                Indexer.indexDocuments(corpus);
+                corpus.clear();
+
+                System.out.println("Batch of " + xmlFiles.size() + " files processed successfully.");
+            }
+
+            System.out.println("All batches processed successfully.");
 
         } catch (Exception e) {
             e.printStackTrace();
