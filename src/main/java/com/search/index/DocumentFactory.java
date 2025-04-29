@@ -3,6 +3,7 @@ package com.search.index;
 import gr.uoc.csd.hy463.NXMLFileReader;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,11 +35,10 @@ public class DocumentFactory {
     }
 
 
-    // Create a list of documents
-    public static List<Document> createDocuments(List<File> files) throws IOException {
+    public static List<Document> createDocuments(List<Path> filePaths) throws IOException {
         ArrayList<Document> docs = new ArrayList<>();
-        for (File file: files) {
-            docs.add(createDocument(file));
+        for (Path path : filePaths) {
+            docs.add(createDocument(path.toFile())); // Convert Path to File
         }
         return docs;
     }

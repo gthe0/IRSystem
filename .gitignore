@@ -20,6 +20,7 @@ buildNumber.properties
 *.json
 results
 MiniCollection/
+MedicalCollection/
 
 ####################################
 # Don't Ignore the following

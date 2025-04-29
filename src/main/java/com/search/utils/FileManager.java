@@ -45,8 +45,8 @@ public class FileManager {
     }
 
     // Get a batch iterator for a directory
-    public static FileBatchIterator getFileBatchIterator(File directory, int batchSize) {
-        return new FileBatchIterator(directory, batchSize);
+    public static FileBatchIterator getFileBatchIterator(File directory, int batchSize) throws IOException {
+        return new FileBatchIterator(directory.getAbsolutePath() , batchSize);
     }
 
     // Ensures a directory exists or creates it

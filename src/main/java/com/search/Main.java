@@ -1,14 +1,16 @@
 package com.search;
 
 import com.search.utils.FileManager;
-import com.search.utils.Indexer;
 import com.search.utils.StopWordManager;
 import com.search.index.Corpus;
 import com.search.index.Document;
 import com.search.index.DocumentFactory;
+import com.search.index.FileMerger;
+import com.search.index.FileBuilder;
 import com.search.utils.FileBatchIterator;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 
 public class Main {
@@ -30,20 +32,23 @@ public class Main {
             FileBatchIterator fileBatchIterator = FileManager.getFileBatchIterator(documentDirectory, BATCH_SIZE);
             int batchNo = 0;
             while (fileBatchIterator.hasNext()) {
-                List<File> xmlFiles = fileBatchIterator.next();
+                List<Path> xmlFiles = fileBatchIterator.next();
                 List<Document> documents = DocumentFactory.createDocuments(xmlFiles);
 
                 Corpus corpus = new Corpus();
                 corpus.addDocuments(documents);
 
-                Indexer.indexDocuments(corpus, batchNo++);
-                corpus.clear();
-
+                FileBuilder postingFileBuilder = new FileBuilder(batchNo);
+                postingFileBuilder.createBatchFiles(corpus);
                 System.out.println("Batch of " + xmlFiles.size() + " files processed successfully.");
+
+                batchNo++;
             }
             
-            Indexer.mergeVocabularyFiles();
             System.out.println("All batches processed successfully.");
+
+            FileMerger fileMerger = new FileMerger();
+            fileMerger.mergeFiles(FileBuilder.VOC_DIR, FileBuilder.POSTING_DIR, FileManager.RESULT_DIR + File.separator + "CollectionIndex");
 
         } catch (Exception e) {
             e.printStackTrace();
