@@ -1,4 +1,4 @@
-package com.search.common.utils;
+package com.search.indexer.utils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -31,9 +31,8 @@ public class FileCollector {
 
             // Pair them up
             for (int i = 0; i < Math.min(vocFiles.length, postFiles.length); i++) {
-                FileTriples.add(new FileTriple( vocFiles[i].getAbsolutePath(), 
-                                                postFiles[i].getAbsolutePath(),
-                                                docFiles[i].getAbsolutePath()));
+                FileTriples.add(new FileTriple( vocFiles[i], postFiles[i],
+                                                docFiles[i]));
             }
         }
 
@@ -42,14 +41,14 @@ public class FileCollector {
 
     // Helper class to represent a vocabulary/posting file pair
     public static class FileTriple {
-        public final String vocabularyFilePath;
-        public final String postingFilePath;
-        public final String docFilePath;
+        public final File vocabularyFile;
+        public final File postingFile;
+        public final File docFile;
 
-        public FileTriple(String vocabularyFilePath, String postingFilePath, String docFilePath) {
-            this.vocabularyFilePath = vocabularyFilePath;
-            this.postingFilePath = postingFilePath;
-            this.docFilePath = docFilePath;
+        public FileTriple(File vocabularyFile, File postingFile, File docFile) {
+            this.vocabularyFile = vocabularyFile;
+            this.postingFile = postingFile;
+            this.docFile = docFile;
         }
     }
 

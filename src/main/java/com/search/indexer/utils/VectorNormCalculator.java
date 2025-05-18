@@ -1,4 +1,4 @@
-package com.search.common.utils;
+package com.search.indexer.utils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

@@ -1,12 +1,10 @@
 package com.search;
 
 import com.search.common.utils.FileBatchIterator;
-import com.search.common.utils.FileBuilder;
-import com.search.common.utils.FileCollector;
 import com.search.common.utils.FileManager;
-import com.search.common.utils.FileMerger;
 import com.search.common.utils.StopWordManager;
 import com.search.indexer.*;
+import com.search.indexer.utils.FileBuilder;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -37,8 +35,6 @@ public class Main {
 
             System.out.println("Select the directory containing the XML documents:");
             File documentDirectory = FileManager.showFileChooserForDirectory();
-
-            long totalDocs = FileManager.countFilesInDir(documentDirectory.toPath());
 
             FileBatchIterator fileBatchIterator = FileManager.getFileBatchIterator(documentDirectory, BATCH_SIZE);
             List<Future<?>> futures = new ArrayList<>();
@@ -74,10 +70,8 @@ public class Main {
                             fileWritingExecutor.submit(() -> {
                                 try {
                                     FileBuilder postingFileBuilder = new FileBuilder(currentBatchNo);
-                                    postingFileBuilder.createBatchFiles(corpus, totalDocs);
+                                    postingFileBuilder.createBatchFiles(corpus);
                                     System.out.println("Batch " + currentBatchNo + " written successfully");
-                                    
-                                    // Clear memory
                                     corpus.clear();
                                 } catch (Exception e) {
                                     System.err.println("Error writing batch " + currentBatchNo);
@@ -106,27 +100,8 @@ public class Main {
                 }
             }
 
-            // Final merging
-            System.out.println("Starting final merge...");
-            List<FileCollector.FileTriple> fileTriples = FileCollector.collectFileTriples(
-                FileBuilder.VOC_DIR, 
-                FileBuilder.POSTING_DIR,
-                FileBuilder.DOC_DIR
-            );
-
-            List<String> vocabularyFiles = new ArrayList<>();
-            List<String> postingFiles = new ArrayList<>();
-            List<String> docFiles = new ArrayList<>();
-
-            for (FileCollector.FileTriple triple : fileTriples) {
-                vocabularyFiles.add(triple.vocabularyFilePath);
-                postingFiles.add(triple.postingFilePath);
-                docFiles.add(triple.docFilePath);
-            }
-
-            FileMerger.mergeFiles(FileManager.RESULT_DIR + File.separator + "CollectionIndex", 
-                                 vocabularyFiles, postingFiles, docFiles);
-
+            // DO FILE MERGING HERE
+            
             System.out.println("Processing complete!");
 
         } catch (Exception e) {

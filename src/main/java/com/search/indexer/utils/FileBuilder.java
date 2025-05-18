@@ -1,9 +1,10 @@
-package com.search.common.utils;
+package com.search.indexer.utils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import com.search.common.utils.FileManager;
 import com.search.indexer.Corpus;
 import com.search.indexer.Document;
 import com.search.indexer.Field;
@@ -25,7 +26,7 @@ public class FileBuilder {
         this.batchNumber = batchNumber;
     }
 
-    public void createBatchFiles(Corpus corpus, long totalDocs) throws IOException {
+    public List<String> createBatchFiles(Corpus corpus) throws IOException {
         // Ensure all directories exist
         FileManager.ensureDirectoryExists(POSTING_DIR);
         FileManager.ensureDirectoryExists(VOC_DIR);
@@ -91,5 +92,7 @@ public class FileBuilder {
         System.out.println("- Document file: " + documentFilePath);
         
         corpus.clear();
+
+        return Arrays.asList(postingFilePath, vocabularyFilePath, documentFilePath);
     }
 }
