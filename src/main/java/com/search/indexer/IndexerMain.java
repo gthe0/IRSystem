@@ -1,9 +1,8 @@
-package com.search;
+package com.search.indexer;
 
 import com.search.common.utils.FileBatchIterator;
 import com.search.common.utils.FileManager;
 import com.search.common.utils.StopWordManager;
-import com.search.indexer.*;
 import com.search.indexer.utils.FileBuilder;
 import com.search.indexer.utils.FileMerger;
 import com.search.indexer.utils.VectorNormCalculator;
@@ -16,7 +15,7 @@ import java.util.List;
 import java.util.concurrent.*;
 
 
-public class Main {
+public class IndexerMain {
 
     // Conservative batch size for 2GB heap
     private static final int BATCH_SIZE = 0x200; 

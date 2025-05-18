@@ -27,12 +27,12 @@ public class QueryReader {
     public List<Query> readFromConsole() {
         List<Query> queries = new ArrayList<>();
         try (Scanner scanner = new Scanner(System.in)) {
-            System.out.println("Enter queries (Press ENTER to stop):");
+            System.out.println("Enter queries (Type "+ "s" +" to stop):");
             int queryCount = 1;
             while (true) {
                 System.out.print("Query #" + queryCount + ": ");
                 String input = scanner.nextLine().trim();
-                if (input.equalsIgnoreCase("\n")) break;
+                if (input.equalsIgnoreCase("s")) break;
                 processLine(input, queries);
                 queryCount++;
             }
