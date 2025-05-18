@@ -1,14 +1,14 @@
-package com.search.utils;
+package com.search.common.utils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-import com.search.index.Corpus;
-import com.search.index.Document;
-import com.search.index.Field;
-import com.search.index.FieldType;
-import com.search.index.Vocabulary;
+import com.search.indexer.Corpus;
+import com.search.indexer.Document;
+import com.search.indexer.Field;
+import com.search.indexer.FieldType;
+import com.search.indexer.Vocabulary;
 
 public class FileBuilder {
     private static final String POSTING_FILE_NAME = "PostingFile_Batch_";

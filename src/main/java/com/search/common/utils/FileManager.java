@@ -1,4 +1,4 @@
-package com.search.utils;
+package com.search.common.utils;
 
 import javax.swing.*;
 import java.io.*;

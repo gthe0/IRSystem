@@ -1,4 +1,4 @@
-package com.search.index;
+package com.search.indexer;
 
 import gr.uoc.csd.hy463.NXMLFileReader;
 import java.io.File;
@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import com.search.token.SimpleTokenStream;
-import com.search.token.TokenStream;
+import com.search.common.token.SimpleTokenStream;
+import com.search.common.token.TokenStream;
 
 public class DocumentFactory {
     

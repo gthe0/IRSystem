@@ -1,12 +1,12 @@
 package com.search;
 
-import com.search.utils.FileManager;
-import com.search.utils.FileMerger;
-import com.search.utils.StopWordManager;
-import com.search.index.*;
-import com.search.utils.FileBatchIterator;
-import com.search.utils.FileBuilder;
-import com.search.utils.FileCollector;
+import com.search.common.utils.FileBatchIterator;
+import com.search.common.utils.FileBuilder;
+import com.search.common.utils.FileCollector;
+import com.search.common.utils.FileManager;
+import com.search.common.utils.FileMerger;
+import com.search.common.utils.StopWordManager;
+import com.search.indexer.*;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -17,7 +17,7 @@ import java.util.concurrent.*;
 public class Main {
 
     // Conservative batch size for 2GB heap
-    private static final int BATCH_SIZE = 0x200; 
+    private static final int BATCH_SIZE = 0x10; 
     
     // Exactly two threads - one for processing, one for writing
     private static final ExecutorService processingExecutor = Executors.newSingleThreadExecutor();
@@ -125,7 +125,7 @@ public class Main {
             }
 
             FileMerger.mergeFiles(FileManager.RESULT_DIR + File.separator + "CollectionIndex", 
-                                 vocabularyFiles, postingFiles);
+                                 vocabularyFiles, postingFiles, docFiles);
 
             System.out.println("Processing complete!");
 

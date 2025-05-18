@@ -1,4 +1,4 @@
-package com.search.index;
+package com.search.indexer;
 
 import java.util.HashMap;
 import java.util.TreeSet;

@@ -1,4 +1,4 @@
-package com.search.token;
+package com.search.common.token;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
