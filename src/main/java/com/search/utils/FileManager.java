@@ -2,6 +2,8 @@ package com.search.utils;
 
 import javax.swing.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class FileManager {
 
@@ -82,5 +84,20 @@ public class FileManager {
             System.err.println("Error creating file: " + e.getMessage());
             return false;
         }
+    }
+
+    public static long countFilesInDir(Path startPath)
+    {
+        long count = 0;
+        
+        try {
+            count = Files.walk(startPath)
+                        .filter(Files::isRegularFile)
+                        .count();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return count;
     }
 }

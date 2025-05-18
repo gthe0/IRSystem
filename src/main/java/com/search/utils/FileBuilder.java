@@ -1,10 +1,14 @@
-package com.search.index;
-
-import com.search.utils.FileManager;
+package com.search.utils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+
+import com.search.index.Corpus;
+import com.search.index.Document;
+import com.search.index.Field;
+import com.search.index.FieldType;
+import com.search.index.Vocabulary;
 
 public class FileBuilder {
     private static final String POSTING_FILE_NAME = "PostingFile_Batch_";
@@ -21,7 +25,7 @@ public class FileBuilder {
         this.batchNumber = batchNumber;
     }
 
-    public void createBatchFiles(Corpus corpus) throws IOException {
+    public void createBatchFiles(Corpus corpus, long totalDocs) throws IOException {
         // Ensure all directories exist
         FileManager.ensureDirectoryExists(POSTING_DIR);
         FileManager.ensureDirectoryExists(VOC_DIR);

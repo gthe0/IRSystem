@@ -1,10 +1,8 @@
-package com.search.index;
+package com.search.utils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-
-import com.search.utils.FileManager;
 
 public class FileMerger {
     private static final String MERGED_POSTING_FILE_NAME = "PostingFile_Merged_";

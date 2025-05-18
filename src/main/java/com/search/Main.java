@@ -1,9 +1,12 @@
 package com.search;
 
 import com.search.utils.FileManager;
+import com.search.utils.FileMerger;
 import com.search.utils.StopWordManager;
 import com.search.index.*;
 import com.search.utils.FileBatchIterator;
+import com.search.utils.FileBuilder;
+import com.search.utils.FileCollector;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -34,6 +37,8 @@ public class Main {
 
             System.out.println("Select the directory containing the XML documents:");
             File documentDirectory = FileManager.showFileChooserForDirectory();
+
+            long totalDocs = FileManager.countFilesInDir(documentDirectory.toPath());
 
             FileBatchIterator fileBatchIterator = FileManager.getFileBatchIterator(documentDirectory, BATCH_SIZE);
             List<Future<?>> futures = new ArrayList<>();
@@ -69,7 +74,7 @@ public class Main {
                             fileWritingExecutor.submit(() -> {
                                 try {
                                     FileBuilder postingFileBuilder = new FileBuilder(currentBatchNo);
-                                    postingFileBuilder.createBatchFiles(corpus);
+                                    postingFileBuilder.createBatchFiles(corpus, totalDocs);
                                     System.out.println("Batch " + currentBatchNo + " written successfully");
                                     
                                     // Clear memory
@@ -103,17 +108,20 @@ public class Main {
 
             // Final merging
             System.out.println("Starting final merge...");
-            List<FileCollector.FilePair> filePairs = FileCollector.collectFilePairs(
+            List<FileCollector.FileTriple> fileTriples = FileCollector.collectFileTriples(
                 FileBuilder.VOC_DIR, 
-                FileBuilder.POSTING_DIR
+                FileBuilder.POSTING_DIR,
+                FileBuilder.DOC_DIR
             );
 
             List<String> vocabularyFiles = new ArrayList<>();
             List<String> postingFiles = new ArrayList<>();
+            List<String> docFiles = new ArrayList<>();
 
-            for (FileCollector.FilePair pair : filePairs) {
-                vocabularyFiles.add(pair.vocabularyFilePath);
-                postingFiles.add(pair.postingFilePath);
+            for (FileCollector.FileTriple triple : fileTriples) {
+                vocabularyFiles.add(triple.vocabularyFilePath);
+                postingFiles.add(triple.postingFilePath);
+                docFiles.add(triple.docFilePath);
             }
 
             FileMerger.mergeFiles(FileManager.RESULT_DIR + File.separator + "CollectionIndex", 
@@ -125,23 +133,6 @@ public class Main {
             e.printStackTrace();
         } finally {
             shutdownExecutors();
-        }
-    }
-
-    private static void checkMemory() {
-        Runtime runtime = Runtime.getRuntime();
-        long used = runtime.totalMemory() - runtime.freeMemory();
-        long max = runtime.maxMemory();
-        double percentageUsed = (double) used / max * 100;
-        
-        System.out.printf("Memory: %.1f%% used (%,dMB/%,dMB)%n",
-                        percentageUsed,
-                        used / (1024 * 1024),
-                        max / (1024 * 1024));
-        
-        if (percentageUsed > 75) {
-            System.gc();
-            System.out.println("Triggered GC");
         }
     }
 

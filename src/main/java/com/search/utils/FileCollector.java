@@ -1,4 +1,4 @@
-package com.search.index;
+package com.search.utils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -8,8 +8,8 @@ import java.util.List;
 
 public class FileCollector {
 
-    public static List<FilePair> collectFilePairs(String vocDir, String postingDir) {
-        List<FilePair> filePairs = new ArrayList<>();
+    public static List<FileTriple> collectFileTriples(String vocDir, String postingDir, String docDir) {
+        List<FileTriple> FileTriples = new ArrayList<>();
 
         // Get all vocabulary files and sort them by batch number
         File[] vocFiles = new File(vocDir).listFiles((dir, name) -> 
@@ -19,29 +19,37 @@ public class FileCollector {
         File[] postFiles = new File(postingDir).listFiles((dir, name) -> 
             name.startsWith("PostingFile_Batch_") && name.endsWith(".txt"));
 
+        // Get all posting files and sort them by batch number
+        File[] docFiles = new File(docDir).listFiles((dir, name) -> 
+            name.startsWith("DocumentFile_Batch_") && name.endsWith(".txt"));
+
         // Sort files by batch number to ensure correct pairing
         if (vocFiles != null && postFiles != null) {
             Arrays.sort(vocFiles, new BatchNumberComparator());
             Arrays.sort(postFiles, new BatchNumberComparator());
+            Arrays.sort(docFiles, new BatchNumberComparator());
 
             // Pair them up
             for (int i = 0; i < Math.min(vocFiles.length, postFiles.length); i++) {
-                filePairs.add(new FilePair(vocFiles[i].getAbsolutePath(), 
-                                       postFiles[i].getAbsolutePath()));
+                FileTriples.add(new FileTriple( vocFiles[i].getAbsolutePath(), 
+                                                postFiles[i].getAbsolutePath(),
+                                                docFiles[i].getAbsolutePath()));
             }
         }
 
-        return filePairs;
+        return FileTriples;
     }
 
     // Helper class to represent a vocabulary/posting file pair
-    public static class FilePair {
+    public static class FileTriple {
         public final String vocabularyFilePath;
         public final String postingFilePath;
+        public final String docFilePath;
 
-        public FilePair(String vocabularyFilePath, String postingFilePath) {
+        public FileTriple(String vocabularyFilePath, String postingFilePath, String docFilePath) {
             this.vocabularyFilePath = vocabularyFilePath;
             this.postingFilePath = postingFilePath;
+            this.docFilePath = docFilePath;
         }
     }
 
