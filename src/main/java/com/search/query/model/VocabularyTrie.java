@@ -1,7 +1,7 @@
 package com.search.query.model;
 
 public class VocabularyTrie {
-    private static final int ALPHABET_SIZE = 26; // a-z lowercase
+    private static final int ALPHABET_SIZE = 36; // a-z lowercase and 0-9
     
     private static class TrieNode {
         TrieNode[] children = new TrieNode[ALPHABET_SIZE];

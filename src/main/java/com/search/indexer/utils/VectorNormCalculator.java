@@ -1,89 +1,107 @@
 package com.search.indexer.utils;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 public class VectorNormCalculator {
+    private final Path resultDir;
+    private final Map<String, Double> vectorNorms = new HashMap<>();
+    private final List<String> documentEntries = new ArrayList<>();
+    private long totalDocuments;
 
-    private static final String MERGED_DOCUMENT_FILE = "DocumentFile_Merged.txt";
-    private static final String MERGED_VOCABULARY_FILE = "VocabularyFile_Merged.txt";
-    private static final String MERGED_POSTING_FILE = "PostingFile_Merged.txt";
-    private static final String OUTPUT_DOCUMENT_FILE = "DocumentFile_With_VectorNorms.txt";
-
-    public static void computeVectorNorms(String outputDir) throws IOException {
-        File documentFile = new File(outputDir, MERGED_DOCUMENT_FILE);
-        File vocabFile = new File(outputDir, MERGED_VOCABULARY_FILE);
-        File postingFile = new File(outputDir, MERGED_POSTING_FILE);
-        File outputFile = new File(outputDir, OUTPUT_DOCUMENT_FILE);
-
-        Map<Integer, Double> docNorms = countDocumentsAndInitializeMap(documentFile);
-        processVocabularyAndPostings(docNorms, vocabFile, postingFile);
-        writeFinalDocumentFile(documentFile, outputFile, docNorms);
+    public VectorNormCalculator(String resultDirPath) {
+        this.resultDir = Paths.get(resultDirPath);
     }
 
-    private static Map<Integer, Double> countDocumentsAndInitializeMap(File documentFile) throws IOException {
-        Map<Integer, Double> docNorms = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(documentFile, StandardCharsets.UTF_8))) {
+    public void calculateAndUpdateNorms() throws IOException {
+        // 1. Read document file and initialize data
+        loadDocumentFile();
+        
+        // 2. Process vocabulary and postings
+        processInvertedIndex();
+
+        // 3. Calculate final norms and update file
+        writeUpdatedDocumentFile();
+    }
+
+    private void loadDocumentFile() throws IOException {
+        Path docFile = resultDir.resolve("DocumentFile.txt");
+        try (BufferedReader reader = new BufferedReader(new FileReader(docFile.toFile()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(" ");
-                int docID = Integer.parseInt(parts[0]);
-                docNorms.put(docID, 0.0); // Initialize norms to 0
+                documentEntries.add(line);
+                vectorNorms.put(getDocId(line), 0.0);
             }
+            totalDocuments = documentEntries.size();
         }
-        return docNorms;
     }
 
-    private static void processVocabularyAndPostings(Map<Integer, Double> docNorms, File vocabFile, File postingFile) throws IOException {
-        try (BufferedReader vocabReader = new BufferedReader(new FileReader(vocabFile, StandardCharsets.UTF_8));
-             BufferedReader postingReader = new BufferedReader(new FileReader(postingFile, StandardCharsets.UTF_8))) {
+    private void processInvertedIndex() throws IOException {
+        Path vocabFile = resultDir.resolve("VocabularyFile.txt");
+        Path postingsFile = resultDir.resolve("PostingFile.txt");
 
+        try (BufferedReader vocabReader = new BufferedReader(new FileReader(vocabFile.toFile()));
+             RandomAccessFile postingsRAF = new RandomAccessFile(postingsFile.toFile(), "r")) {
+            
             String vocabLine;
             while ((vocabLine = vocabReader.readLine()) != null) {
-                String[] vocabParts = vocabLine.split(" ");
+                String[] parts = vocabLine.split(" ");
+                int df = Integer.parseInt(parts[1]);
+                long pointer = Long.parseLong(parts[2]);
 
-                int df = Integer.parseInt(vocabParts[1]);
-                long pointer = Long.parseLong(vocabParts[2]);
-
-                // Calculate IDF
-                double idf = Math.log(docNorms.size() / (double) df);
-
-                // Move to correct posting position
-                postingReader.skip(pointer);
-
-                for (int i = 0; i < df; i++) {
-                    String postingLine = postingReader.readLine();
-                    if (postingLine != null) {
-                        String[] postingParts = postingLine.split(" ");
-                        int docID = Integer.parseInt(postingParts[0]);
-                        int tf = Integer.parseInt(postingParts[1]);
-
-                        double tfIdf = tf * idf;
-                        docNorms.put(docID, docNorms.get(docID) + Math.pow(tfIdf, 2));
-                    }
-                }
+                double idf = Math.log(totalDocuments / (double) df);
+                
+                processPostings(postingsRAF, pointer, df, idf);
             }
         }
     }
 
-    private static void writeFinalDocumentFile(File documentFile, File outputFile, Map<Integer, Double> docNorms) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(documentFile, StandardCharsets.UTF_8));
-             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile, StandardCharsets.UTF_8))) {
+    private void processPostings(RandomAccessFile postingsRAF, long pointer, int df, double idf) throws IOException {
+        postingsRAF.seek(pointer);
+        for (int i = 0; i < df; i++) {
+            String postingLine = postingsRAF.readLine();
+            if (postingLine == null) break;
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(" ");
-                int docID = Integer.parseInt(parts[0]);
-                String docPath = parts[1];
+            String[] parts = postingLine.split(" ", 3);
+            String docId = parts[0];
+            int tf = Integer.parseInt(parts[1]);
 
-                double vectorNorm = Math.sqrt(docNorms.get(docID));
+            double tfidf = tf * idf;
+            vectorNorms.compute(docId, (k, v) -> v + Math.pow(tfidf, 2));
+        }
+    }
 
-                writer.write(docID + " " + docPath + " " + vectorNorm);
-                writer.newLine();
+    private void writeUpdatedDocumentFile() throws IOException {
+        Path tempFile = resultDir.resolve("DocumentFile.tmp");
+        Path finalFile = resultDir.resolve("DocumentFile.txt");
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile.toFile()))) {
+            for (String entry : documentEntries) {
+                String docId = getDocId(entry);
+                double norm = Math.sqrt(vectorNorms.get(docId));
+                writer.write(entry + " " + norm + "\n");
             }
         }
 
-        System.out.println("Vector norms computed and saved successfully!");
+        // Atomic replace
+        FileUtils.replaceFile(tempFile, finalFile);
+    }
+
+    private String getDocId(String documentLine) {
+        return documentLine.split(" ")[0];
+    }
+
+    // File replacement utility
+    private static class FileUtils {
+        static void replaceFile(Path temp, Path target) throws IOException {
+            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 }

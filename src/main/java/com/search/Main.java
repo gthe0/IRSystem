@@ -5,6 +5,9 @@ import com.search.common.utils.FileManager;
 import com.search.common.utils.StopWordManager;
 import com.search.indexer.*;
 import com.search.indexer.utils.FileBuilder;
+import com.search.indexer.utils.FileMerger;
+import com.search.indexer.utils.VectorNormCalculator;
+import com.search.indexer.utils.FileBatchCollector;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -12,10 +15,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
+
 public class Main {
 
     // Conservative batch size for 2GB heap
-    private static final int BATCH_SIZE = 0x10; 
+    private static final int BATCH_SIZE = 0x200; 
     
     // Exactly two threads - one for processing, one for writing
     private static final ExecutorService processingExecutor = Executors.newSingleThreadExecutor();
@@ -38,6 +42,8 @@ public class Main {
 
             FileBatchIterator fileBatchIterator = FileManager.getFileBatchIterator(documentDirectory, BATCH_SIZE);
             List<Future<?>> futures = new ArrayList<>();
+
+            FileBatchCollector fileBatchCollector = new FileBatchCollector();
 
             while (fileBatchIterator.hasNext()) {
                 final List<Path> xmlFiles = fileBatchIterator.next();
@@ -70,7 +76,7 @@ public class Main {
                             fileWritingExecutor.submit(() -> {
                                 try {
                                     FileBuilder postingFileBuilder = new FileBuilder(currentBatchNo);
-                                    postingFileBuilder.createBatchFiles(corpus);
+                                    fileBatchCollector.add(postingFileBuilder.createBatchFiles(corpus));
                                     System.out.println("Batch " + currentBatchNo + " written successfully");
                                     corpus.clear();
                                 } catch (Exception e) {
@@ -91,7 +97,7 @@ public class Main {
                 }));
             }
 
-            // Wait for completion
+            // Wait for processing tasks to complete
             for (Future<?> future : futures) {
                 try {
                     future.get();
@@ -100,8 +106,28 @@ public class Main {
                 }
             }
 
-            // DO FILE MERGING HERE
-            
+            // Wait for all file writing tasks to finish
+            fileWritingExecutor.shutdown(); // Prevent new tasks
+            try {
+                // Wait indefinitely for existing tasks to complete
+                if (!fileWritingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
+                    System.err.println("File writing tasks did not complete!");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            String resultDir = FileManager.RESULT_DIR + File.separator + "CollectionIndex";
+            FileManager.ensureDirectoryExists(resultDir);
+            FileMerger.merge(
+                fileBatchCollector.getVocabPaths(),
+                fileBatchCollector.getPostingsPaths(), 
+                fileBatchCollector.getDocPaths(), 
+                resultDir
+            );
+
+            VectorNormCalculator vec = new VectorNormCalculator(resultDir);
+            vec.calculateAndUpdateNorms();
             System.out.println("Processing complete!");
 
         } catch (Exception e) {

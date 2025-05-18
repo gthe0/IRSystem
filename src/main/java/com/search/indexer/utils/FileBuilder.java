@@ -93,6 +93,6 @@ public class FileBuilder {
         
         corpus.clear();
 
-        return Arrays.asList(postingFilePath, vocabularyFilePath, documentFilePath);
+        return Arrays.asList(vocabularyFilePath, postingFilePath, documentFilePath);
     }
 }
