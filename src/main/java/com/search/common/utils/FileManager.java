@@ -2,8 +2,11 @@ package com.search.common.utils;
 
 import javax.swing.*;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FileManager {
 
@@ -99,5 +102,107 @@ public class FileManager {
         }
 
         return count;
+    }
+
+
+    public static class LineResult {
+        private final String line;
+        private final long nextPosition;
+        
+        public LineResult(String line, long nextPosition) {
+            this.line = line;
+            this.nextPosition = nextPosition;
+        }
+        
+        public String getLine() { return line; }
+        public long getNextPosition() { return nextPosition; }
+    }
+
+    public static String readLineFromPosition(RandomAccessFile file, long position) throws IOException
+    {
+        return readLineFrom(file, position).getLine();
+    }
+
+    /**
+     * Reads a single UTF-8 encoded line starting at the specified file position
+     * @param file Opened RandomAccessFile instance
+     * @param position Starting byte position in file
+     * @return LineResult containing line text and next read position
+     */
+    private static LineResult readLineFrom(RandomAccessFile file, long position) 
+        throws IOException {
+        
+        file.seek(position);
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        long currentPosition = position;
+        boolean foundCR = false;
+
+        while (true) {
+            int byteRead = file.read();
+            if (byteRead == -1) break; // EOF
+            
+            currentPosition = file.getFilePointer();
+
+            if (byteRead == '\n') { 
+                return buildResult(buffer, foundCR, currentPosition);
+            } else if (foundCR) {
+                handleCRLF(file, buffer, byteRead, currentPosition);
+                return buildResult(buffer, true, currentPosition);
+            } else if (byteRead == '\r') { 
+                foundCR = true;
+                continue;
+            }
+            
+            buffer.write(byteRead);
+            foundCR = false;
+        }
+
+        return handleEOF(buffer, foundCR, currentPosition);
+    }
+
+    /**
+     * Reads multiple UTF-8 encoded lines starting at specified position
+     * @param file Opened RandomAccessFile instance
+     * @param position Starting byte position
+     * @param maxLines Maximum number of lines to read
+     * @return List of read lines (may be shorter than maxLines if EOF reached)
+     */
+    public static List<String> readLinesFromPosition(RandomAccessFile file, long position, int maxLines) 
+        throws IOException {
+        
+        List<String> results = new ArrayList<>();
+        long currentPosition = position;
+        int linesRead = 0;
+
+        while (linesRead < maxLines) {
+            LineResult result = readLineFrom(file, currentPosition);
+            if (result == null) break;
+            
+            results.add(result.getLine());
+            currentPosition = result.getNextPosition();
+            linesRead++;
+        }
+
+        return results;
+    }
+
+    // Helper methods
+    private static LineResult buildResult(ByteArrayOutputStream buffer, boolean foundCR, long pos) {
+        if (foundCR) pos--; // Adjust for CR-only endings
+        String line = buffer.toString(StandardCharsets.UTF_8);
+        return new LineResult(line, pos);
+    }
+
+    private static void handleCRLF(RandomAccessFile file, ByteArrayOutputStream buffer, 
+                                  int byteRead, long currentPos) throws IOException {
+        if (byteRead != '\n') {
+            file.seek(currentPos - 1); // Rewind for non-LF following CR
+        }
+    }
+
+    private static LineResult handleEOF(ByteArrayOutputStream buffer, boolean foundCR, long pos) {
+        if (buffer.size() == 0 && !foundCR) return null;
+        if (foundCR) pos--; // Adjust for final CR
+        return new LineResult(buffer.toString(StandardCharsets.UTF_8), pos);
     }
 }
