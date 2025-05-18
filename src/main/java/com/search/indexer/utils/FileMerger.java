@@ -1,8 +1,10 @@
-package com.search.common.utils;
+package com.search.indexer.utils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+
+import com.search.common.utils.FileManager;
 
 public class FileMerger {
     private static final String MERGED_VOCABULARY_FILE = "VocabularyFile_Merged.txt";
