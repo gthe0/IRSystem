@@ -147,7 +147,7 @@ public class FileMerger {
     }
 
     private static long getNextPointer(BufferedReader reader, VocabEntry current) throws IOException {
-        reader.mark(1024);
+        reader.mark(8192);
         String nextLine = reader.readLine();
         reader.reset();
         return nextLine != null ? parseVocabLine(nextLine).pointer : -1;
