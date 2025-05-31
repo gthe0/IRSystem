@@ -1,17 +1,18 @@
 package com.search.indexer;
 
-import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class Corpus implements Iterable<Document> {
     private Vocabulary vocabulary;                
-    private HashMap<Integer, Document> documents; 
+    private TreeMap<Integer, Document> documents; 
 
     // Constructor initializes the vocabulary and document map
     public Corpus() {
         this.vocabulary = new Vocabulary();
-        this.documents = new HashMap<>();
+        this.documents = new TreeMap<>();
     }
 
     // Add a single document to the corpus
@@ -35,7 +36,7 @@ public class Corpus implements Iterable<Document> {
     }
 
     // Get all documents in the corpus
-    public HashMap<Integer, Document> getDocuments() {
+    public Map<Integer, Document> getDocuments() {
         return documents;
     }
 
