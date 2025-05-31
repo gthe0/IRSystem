@@ -124,8 +124,8 @@ public class IndexerMain {
                 Thread.currentThread().interrupt();
             }
             
-            System.out.println("Partial indexing of " + documentDirectory + " is done in " + timer.getElapsedTimeSeconds() + " sc");
-            
+            System.out.println("Partial indexing of " + documentDirectory + " is done in " + timer.getElapsedTimeSeconds() + " sec");
+
             timer.start();
             String resultDir = FileManager.RESULT_DIR + File.separator + "CollectionIndex";
             FileManager.ensureDirectoryExists(resultDir);
@@ -136,13 +136,18 @@ public class IndexerMain {
                 resultDir
             );
             timer.stop();
-            System.out.println("Merging of partial files was done in " + timer.getElapsedTimeSeconds() + " sc");
+            System.out.println("Merging of partial files was done in " + timer.getElapsedTimeSeconds() + " sec");
 
             timer.start();
             VectorNormCalculator vec = new VectorNormCalculator(resultDir);
             vec.calculateAndUpdateNorms();
             timer.stop();
-            System.out.println("Vector Norm caclulation was done in " + timer.getElapsedTimeSeconds() + " sc");
+
+            FileManager.deleteDirectory(new File(FileBuilder.POSTING_DIR));
+            FileManager.deleteDirectory(new File(FileBuilder.VOC_DIR)); 
+            FileManager.deleteDirectory(new File(FileBuilder.DOC_DIR)); 
+
+            System.out.println("Vector Norm caclulation was done in " + timer.getElapsedTimeSeconds() + " sec");
             System.out.println("Processing complete!");
 
         } catch (Exception e) {

@@ -186,6 +186,17 @@ public class FileManager {
         return results;
     }
 
+    public static void deleteDirectory(File dir) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) deleteDirectory(file);
+                else file.delete();
+            }
+        }
+        dir.delete();
+    }
+
     // Helper methods
     private static LineResult buildResult(ByteArrayOutputStream buffer, boolean foundCR, long pos) {
         if (foundCR) pos--; // Adjust for CR-only endings
@@ -205,4 +216,7 @@ public class FileManager {
         if (foundCR) pos--; // Adjust for final CR
         return new LineResult(buffer.toString(StandardCharsets.UTF_8), pos);
     }
+
+
+
 }
