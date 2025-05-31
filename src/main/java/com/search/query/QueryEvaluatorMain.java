@@ -70,7 +70,7 @@ public class QueryEvaluatorMain {
     }
 
     private static void processQueries(List<Query> queries) {
-        final int MAX_RESULTS = 10;
+        final int MAX_RESULTS = 1000;
         
         for (Query query : queries) {
             System.out.println("\nProcessing query: " + query.getQuery());

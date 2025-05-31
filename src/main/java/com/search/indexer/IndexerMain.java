@@ -3,6 +3,7 @@ package com.search.indexer;
 import com.search.common.utils.FileBatchIterator;
 import com.search.common.utils.FileManager;
 import com.search.common.utils.StopWordManager;
+import com.search.common.utils.Timer;
 import com.search.indexer.utils.FileBuilder;
 import com.search.indexer.utils.FileMerger;
 import com.search.indexer.utils.VectorNormCalculator;
@@ -43,7 +44,10 @@ public class IndexerMain {
             List<Future<?>> futures = new ArrayList<>();
 
             FileBatchCollector fileBatchCollector = new FileBatchCollector();
+            Timer timer  = new Timer();
 
+            timer.start();
+            
             while (fileBatchIterator.hasNext()) {
                 final List<Path> xmlFiles = fileBatchIterator.next();
                 final int currentBatchNo = futures.size();
@@ -107,6 +111,10 @@ public class IndexerMain {
 
             // Wait for all file writing tasks to finish
             fileWritingExecutor.shutdown(); // Prevent new tasks
+
+            timer.stop();
+
+            
             try {
                 // Wait indefinitely for existing tasks to complete
                 if (!fileWritingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
@@ -115,7 +123,10 @@ public class IndexerMain {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-
+            
+            System.out.println("Partial indexing of " + documentDirectory + " is done in " + timer.getElapsedTimeSeconds() + " sc");
+            
+            timer.start();
             String resultDir = FileManager.RESULT_DIR + File.separator + "CollectionIndex";
             FileManager.ensureDirectoryExists(resultDir);
             FileMerger.merge(
@@ -124,9 +135,14 @@ public class IndexerMain {
                 fileBatchCollector.getDocPaths(), 
                 resultDir
             );
+            timer.stop();
+            System.out.println("Merging of partial files was done in " + timer.getElapsedTimeSeconds() + " sc");
 
+            timer.start();
             VectorNormCalculator vec = new VectorNormCalculator(resultDir);
             vec.calculateAndUpdateNorms();
+            timer.stop();
+            System.out.println("Vector Norm caclulation was done in " + timer.getElapsedTimeSeconds() + " sc");
             System.out.println("Processing complete!");
 
         } catch (Exception e) {
