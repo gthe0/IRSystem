@@ -1,7 +1,10 @@
 package com.search.indexer.utils;
 
 import java.io.*;
+import java.nio.*;
+import java.nio.channels.*;
 import java.nio.file.*;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.Map;
 
@@ -16,13 +19,8 @@ public class VectorNormCalculator {
     }
 
     public void calculateAndUpdateNorms() throws IOException, InterruptedException {
-        // 1. Count documents
         totalDocuments = countDocuments();
-        
-        // 2. Process with thread-local storage
         processInvertedIndexParallel();
-        
-        // 3. Update document file
         writeUpdatedDocumentFile();
     }
 
@@ -36,20 +34,31 @@ public class VectorNormCalculator {
     private void processInvertedIndexParallel() throws IOException, InterruptedException {
         final Path vocabFile = resultDir.resolve("VocabularyFile.txt");
         final Path postingsFile = resultDir.resolve("PostingFile.txt");
+        long fileSize = Files.size(postingsFile);
         
-        // Create worker threads
+        // Use multiple buffers for files >2GB
+        List<ByteBuffer> buffers = new ArrayList<>();
+        try (FileChannel channel = FileChannel.open(postingsFile, StandardOpenOption.READ)) {
+            long offset = 0;
+            while (offset < fileSize) {
+                long chunkSize = Math.min(Integer.MAX_VALUE, fileSize - offset);
+                MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, offset, chunkSize);
+                buffers.add(buf);
+                offset += chunkSize;
+            }
+        }
+        
         int numThreads = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
         
         try (BufferedReader vocabReader = Files.newBufferedReader(vocabFile)) {
-            // Process vocabulary line-by-line
             String line;
             while ((line = vocabReader.readLine()) != null) {
                 final String vocabLine = line;
                 executor.execute(() -> {
-                    try (RandomAccessFile raf = new RandomAccessFile(postingsFile.toFile(), "r")) {
-                        processVocabEntry(raf, vocabLine);
-                    } catch (IOException e) {
+                    try {
+                        processVocabEntry(buffers, vocabLine);
+                    } catch (Exception e) {
                         throw new CompletionException(e);
                     }
                 });
@@ -60,23 +69,50 @@ public class VectorNormCalculator {
         }
     }
 
-    private void processVocabEntry(RandomAccessFile raf, String vocabLine) throws IOException {
+    private void processVocabEntry(List<ByteBuffer> buffers, String vocabLine) {
         String[] parts = vocabLine.split(" ");
         int df = Integer.parseInt(parts[1]);
         long pointer = Long.parseLong(parts[2]);
         double idf = Math.log(totalDocuments / (double) df);
         
-        raf.seek(pointer);
+        // Get buffer and position for this pointer
+        int bufIndex = (int) (pointer / Integer.MAX_VALUE);
+        int bufOffset = (int) (pointer % Integer.MAX_VALUE);
+        ByteBuffer buffer = buffers.get(bufIndex).duplicate();
+        buffer.position(bufOffset);
+        
         for (int i = 0; i < df; i++) {
-            String postingLine = raf.readLine();
-            if (postingLine == null) break;
+            // Parse docID (read until space)
+            long docId = 0;
+            byte b;
+            while (buffer.hasRemaining() && (b = buffer.get()) != ' ') {
+                if (b >= '0' && b <= '9') {
+                    docId = docId * 10 + (b - '0');
+                }
+            }
             
-            String[] tokens = postingLine.split(" ", 3);
-            long docId = Long.parseLong(tokens[0]);
-            int tf = Integer.parseInt(tokens[1]);
+            // Parse term frequency (read until space or newline)
+            int tf = 0;
+            while (buffer.hasRemaining()) {
+                b = buffer.get();
+                if (b == ' ' || b == '\n') break;
+                if (b >= '0' && b <= '9') {
+                    tf = tf * 10 + (b - '0');
+                }
+            }
             
+            // Skip rest of line
+            while (buffer.hasRemaining() && buffer.get() != '\n') {}
+            
+            // Update norm contribution
             double contribution = Math.pow(tf * idf, 2);
             vectorNorms.merge(docId, contribution, Double::sum);
+            
+            // Handle buffer boundaries
+            if (!buffer.hasRemaining() && bufIndex < buffers.size() - 1) {
+                bufIndex++;
+                buffer = buffers.get(bufIndex).duplicate();
+            }
         }
     }
 

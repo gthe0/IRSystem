@@ -1,9 +1,12 @@
 package com.search.indexer.utils;
 
 import java.io.*;
+import java.nio.*;
+import java.nio.channels.*;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.search.common.utils.FileManager;
 
@@ -21,35 +24,79 @@ public class FileMerger {
         Path tempDir = Paths.get(resultPath, "temp_merge");
         Files.createDirectories(tempDir);
         
-        ConcurrentLinkedQueue<String> vocabQueue = new ConcurrentLinkedQueue<>(vocabFiles);
-        ConcurrentLinkedQueue<String> postQueue = new ConcurrentLinkedQueue<>(postingFiles);
-        int mergeCount = 0;
-
-        // Pairwise merge until only one file remains
-        while (vocabQueue.size() > 1) {
-            String vocab1 = vocabQueue.poll();
-            String vocab2 = vocabQueue.poll();
-            String post1  = postQueue.poll();
-            String post2  = postQueue.poll();
-
-            String mergedVocab = tempDir.resolve("vocab_merged_" + mergeCount + ".txt").toString();
-            String mergedPost = tempDir.resolve("post_merged_" + mergeCount + ".txt").toString();
-            mergeCount++;
-
-            mergeTwoFiles(vocab1, post1, vocab2, post2, mergedVocab, mergedPost);
+        // Initialize queues
+        Queue<String> vocabQueue = new ConcurrentLinkedQueue<>(vocabFiles);
+        Queue<String> postQueue = new ConcurrentLinkedQueue<>(postingFiles);
+        
+        // Thread pool setup
+        int numThreads = Math.max(2, Runtime.getRuntime().availableProcessors());
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        AtomicInteger mergeCount = new AtomicInteger(0);
+        
+        try {
+            while (vocabQueue.size() > 1) {
+                int currentSize = vocabQueue.size();
+                int numPairs = currentSize / 2;
+                int leftover = currentSize % 2;
+                
+                // Process pairs concurrently
+                List<Future<MergeResult>> futures = new ArrayList<>(numPairs);
+                for (int i = 0; i < numPairs; i++) {
+                    String vocab1 = vocabQueue.poll();
+                    String vocab2 = vocabQueue.poll();
+                    String post1 = postQueue.poll();
+                    String post2 = postQueue.poll();
+                    
+                    String mergedVocab = tempDir.resolve("vocab_merged_" + mergeCount.get() + "_t" + i + ".txt").toString();
+                    String mergedPost = tempDir.resolve("post_merged_" + mergeCount.get() + "_t" + i + ".txt").toString();
+                    
+                    futures.add(executor.submit(() -> {
+                        mergeTwoFiles(vocab1, post1, vocab2, post2, mergedVocab, mergedPost);
+                        return new MergeResult(mergedVocab, mergedPost);
+                    }));
+                }
+                
+                // Handle leftover file
+                if (leftover > 0) {
+                    vocabQueue.add(vocabQueue.poll());
+                    postQueue.add(postQueue.poll());
+                }
+                
+                // Collect results
+                for (Future<MergeResult> future : futures) {
+                    MergeResult result = future.get();
+                    vocabQueue.add(result.mergedVocabPath);
+                    postQueue.add(result.mergedPostPath);
+                }
+                mergeCount.incrementAndGet();
+            }
             
-            vocabQueue.add(mergedVocab);
-            postQueue.add(mergedPost);
+            // Move final files to result location
+            Path finalVocab = Paths.get(resultPath, "VocabularyFile.txt");
+            Path finalPosting = Paths.get(resultPath, "PostingFile.txt");
+            Files.move(Paths.get(vocabQueue.poll()), finalVocab, StandardCopyOption.REPLACE_EXISTING);
+            Files.move(Paths.get(postQueue.poll()), finalPosting, StandardCopyOption.REPLACE_EXISTING);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Merge interrupted", e);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof IOException) throw (IOException) cause;
+            throw new IOException("Merge error", cause);
+        } finally {
+            executor.shutdownNow();
+            FileManager.deleteDirectory(tempDir.toFile());
         }
+    }
 
-        // Move final files to result location
-        Path finalVocab = Paths.get(resultPath, "VocabularyFile.txt");
-        Path finalPosting = Paths.get(resultPath, "PostingFile.txt");
-        Files.move(Paths.get(vocabQueue.poll()), finalVocab, StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(postQueue.poll()), finalPosting, StandardCopyOption.REPLACE_EXISTING);
+    private static class MergeResult {
+        final String mergedVocabPath;
+        final String mergedPostPath;
 
-        // Cleanup temp directory
-        FileManager.deleteDirectory(tempDir.toFile());
+        MergeResult(String mergedVocabPath, String mergedPostPath) {
+            this.mergedVocabPath = mergedVocabPath;
+            this.mergedPostPath = mergedPostPath;
+        }
     }
 
     private static void mergeTwoFiles(String vocabPath1, String postPath1, 
@@ -57,10 +104,11 @@ public class FileMerger {
                                      String mergedVocab, String mergedPost) throws IOException {
         try (BufferedReader reader1 = new BufferedReader(new FileReader(vocabPath1));
              BufferedReader reader2 = new BufferedReader(new FileReader(vocabPath2));
-             RandomAccessFile raf1 = new RandomAccessFile(postPath1, "r");
-             RandomAccessFile raf2 = new RandomAccessFile(postPath2, "r");
+             FileChannel postChannel1 = FileChannel.open(Paths.get(postPath1), StandardOpenOption.READ);
+             FileChannel postChannel2 = FileChannel.open(Paths.get(postPath2), StandardOpenOption.READ);
              BufferedWriter vocabWriter = new BufferedWriter(new FileWriter(mergedVocab));
-             RandomAccessFile mergedRAF = new RandomAccessFile(mergedPost, "rw")) {
+             FileChannel mergedPostChannel = FileChannel.open(Paths.get(mergedPost), 
+                    StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
             
             // Initialize pointers
             String line1 = reader1.readLine();
@@ -75,40 +123,34 @@ public class FileMerger {
                 int cmp = entry1.term.compareTo(entry2.term);
                 
                 if (cmp < 0) {
-                    mergedPointer = processTerm(entry1, raf1, reader1, vocabWriter, mergedRAF, mergedPointer);
+                    mergedPointer = processTerm(entry1, postChannel1, reader1, vocabWriter, mergedPostChannel, mergedPointer);
                     line1 = reader1.readLine();
                 } else if (cmp > 0) {
-                    mergedPointer = processTerm(entry2, raf2, reader2,vocabWriter, mergedRAF, mergedPointer);
+                    mergedPointer = processTerm(entry2, postChannel2, reader2, vocabWriter, mergedPostChannel, mergedPointer);
                     line2 = reader2.readLine();
                 } else {
                     long newPointer = mergedPointer;
 
-                    // Read the number at the current pointers
-                    raf1.seek(entry1.pointer);
-                    raf2.seek(entry2.pointer);
+                    // Read first document ID to determine merge order
+                    long docId1 = readFirstDocId(postChannel1, entry1.pointer);
+                    long docId2 = readFirstDocId(postChannel2, entry2.pointer);
 
-                    long num1 = raf1.readLong();
-                    long num2 = raf2.readLong();
-
-                    if(num1 <= num2)
-                    {
-                        mergedPointer = copyPostingData(raf1, entry1.pointer, 
-                                                      getNextPointer(reader1, entry1), 
-                                                      mergedRAF, mergedPointer);
+                    if (docId1 <= docId2) {
+                        mergedPointer = copyPostingData(postChannel1, entry1.pointer, 
+                                                       getNextPointer(reader1, entry1), 
+                                                       mergedPostChannel, mergedPointer);
                         
-                        mergedPointer = copyPostingData(raf2, entry2.pointer, 
-                                                      getNextPointer(reader2, entry2), 
-                                                      mergedRAF, mergedPointer);
-                    }
-                    else
-                    {
-                        mergedPointer = copyPostingData(raf2, entry2.pointer, 
-                                                      getNextPointer(reader2, entry2), 
-                                                      mergedRAF, mergedPointer);
-
-                        mergedPointer = copyPostingData(raf1, entry1.pointer, 
-                                                      getNextPointer(reader1, entry1), 
-                                                      mergedRAF, mergedPointer);
+                        mergedPointer = copyPostingData(postChannel2, entry2.pointer, 
+                                                       getNextPointer(reader2, entry2), 
+                                                       mergedPostChannel, mergedPointer);
+                    } else {
+                        mergedPointer = copyPostingData(postChannel2, entry2.pointer, 
+                                                       getNextPointer(reader2, entry2), 
+                                                       mergedPostChannel, mergedPointer);
+                        
+                        mergedPointer = copyPostingData(postChannel1, entry1.pointer, 
+                                                       getNextPointer(reader1, entry1), 
+                                                       mergedPostChannel, mergedPointer);
                     }
                     
                     vocabWriter.write(entry1.term + " " + (entry1.df + entry2.df) + " " + newPointer + "\n");
@@ -121,29 +163,36 @@ public class FileMerger {
             // Process remaining terms
             while (line1 != null) {
                 VocabEntry entry = parseVocabLine(line1);
-                mergedPointer = processTerm(entry, raf1, reader1, vocabWriter, mergedRAF, mergedPointer);
+                mergedPointer = processTerm(entry, postChannel1, reader1, vocabWriter, mergedPostChannel, mergedPointer);
                 line1 = reader1.readLine();
             }
             
             while (line2 != null) {
                 VocabEntry entry = parseVocabLine(line2);
-                mergedPointer = processTerm(entry, raf2, reader2, vocabWriter, mergedRAF, mergedPointer);
+                mergedPointer = processTerm(entry, postChannel2, reader2, vocabWriter, mergedPostChannel, mergedPointer);
                 line2 = reader2.readLine();
             }
         }
     }
 
+    private static long readFirstDocId(FileChannel channel, long position) throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(8);
+        channel.read(buffer, position);
+        buffer.flip();
+        return buffer.getLong();
+    }
+
     private static long processTerm(VocabEntry entry, 
-                                    RandomAccessFile sourceRAF,
+                                    FileChannel sourceChannel,
                                     BufferedReader vocabReader,
                                     BufferedWriter vocabWriter,
-                                    RandomAccessFile mergedRAF,
+                                    FileChannel mergedChannel,
                                     long currentPointer) throws IOException {
         long newPointer = currentPointer;
         long nextPointer = getNextPointer(vocabReader, entry);
         
         vocabWriter.write(entry.term + " " + entry.df + " " + newPointer + "\n");
-        return copyPostingData(sourceRAF, entry.pointer, nextPointer, mergedRAF, currentPointer);
+        return copyPostingData(sourceChannel, entry.pointer, nextPointer, mergedChannel, currentPointer);
     }
 
     private static long getNextPointer(BufferedReader reader, VocabEntry current) throws IOException {
@@ -153,37 +202,21 @@ public class FileMerger {
         return nextLine != null ? parseVocabLine(nextLine).pointer : -1;
     }
 
-    private static long copyPostingData(RandomAccessFile sourceRAF, 
+    private static long copyPostingData(FileChannel sourceChannel, 
                                        long startPointer, 
                                        long endPointer,
-                                       RandomAccessFile targetRAF,
+                                       FileChannel targetChannel,
                                        long targetPosition) throws IOException {
-        if (endPointer == -1) {
-            long length = sourceRAF.length() - startPointer;
-            return copyBytes(sourceRAF, startPointer, length, targetRAF, targetPosition);
-        }
-
-        long byteCount = endPointer - startPointer;
-        return copyBytes(sourceRAF, startPointer, byteCount, targetRAF, targetPosition);
+        long length = (endPointer == -1) ? sourceChannel.size() - startPointer : endPointer - startPointer;
+        return copyBytes(sourceChannel, startPointer, length, targetChannel, targetPosition);
     }
 
-    private static long copyBytes(RandomAccessFile source, long sourcePos, long length,
-                                 RandomAccessFile target, long targetPos) throws IOException {
-        source.seek(sourcePos);
-        target.seek(targetPos);
-        
-        byte[] buffer = new byte[8192];
-        long bytesRemaining = length;
-        
-        while (bytesRemaining > 0) {
-            int bytesToRead = (int) Math.min(buffer.length, bytesRemaining);
-            int bytesRead = source.read(buffer, 0, bytesToRead);
-            if (bytesRead < 0) break;
-            
-            target.write(buffer, 0, bytesRead);
-            bytesRemaining -= bytesRead;
+    private static long copyBytes(FileChannel source, long sourcePos, long length,
+                                 FileChannel target, long targetPos) throws IOException {
+        long transferred = 0;
+        while (transferred < length) {
+            transferred += source.transferTo(sourcePos + transferred, length - transferred, target);
         }
-        
         return targetPos + length;
     }
 
