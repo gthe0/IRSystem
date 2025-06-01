@@ -13,7 +13,7 @@ import java.util.Map;
 public class QueryEvaluatorMain {
     private static QueryEvaluator evaluator;
 
-    public static void main() {
+    public static void main(String[] args) {
         try {
             // Get collection index path
             MemoryMonitor memMonitor = new MemoryMonitor("Query Memory Estimator");
