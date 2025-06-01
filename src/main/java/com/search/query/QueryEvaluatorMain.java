@@ -12,23 +12,21 @@ import java.util.Map;
 
 public class QueryEvaluatorMain {
     private static QueryEvaluator evaluator;
-    private static QueryReader queryReader;
 
-    public static void main(String[] args) {
+    public static void main() {
         try {
             // Get collection index path
             MemoryMonitor memMonitor = new MemoryMonitor("Query Memory Estimator");
-            String collectionPath = getCollectionPath(args);
+            String collectionPath = getCollectionPath();
             
             // Initialize components
             evaluator = new QueryEvaluator(collectionPath, new VectorSpaceModel());
-            queryReader = new QueryReader();
 
             memMonitor.printStats();
             memMonitor.printUsage();
 
             // Process queries
-            List<Query> queries = getQueries(args);
+            List<Query> queries = getQueries();
             processQueries(queries);
 
         } catch (Exception e) {
@@ -41,36 +39,48 @@ public class QueryEvaluatorMain {
         }
     }
 
-    private static String getCollectionPath(String[] args) throws Exception {
-        if (args.length > 0) {
-            return args[0];
-        }
+    private static String getCollectionPath() throws Exception {
         System.out.println("Select the Collection Index directory:");
         File dir = FileManager.showFileChooserForDirectory();
         if (dir == null) throw new Exception("No collection index selected");
         return dir.getAbsolutePath();
     }
-
-    private static List<Query> getQueries(String[] args) throws Exception {
-        if (args.length > 1) {
-            // Read queries from file
-            File queryFile = new File(args[1]);
-            return queryReader.readFromFile(queryFile);
-        }
-        
+    
+    private static List<Query> getQueries() throws Exception {
         System.out.println("Choose input method:");
         System.out.println("1. Interactive console input");
         System.out.println("2. File input");
         System.out.print("Selection: ");
         
         int choice = Integer.parseInt(System.console().readLine());
+        
         if (choice == 2) {
             System.out.println("Select query file:");
             File file = FileManager.showFileChooserForFile();
-            return queryReader.readFromFile(file);
+            
+            if (file == null) {
+                throw new Exception("No query file selected");
+            }
+            
+            if (file.getName().toLowerCase().endsWith(".xml")) {
+                // XML file detected - ask for source selection
+                System.out.println("Choose query source:");
+                System.out.println("1. Summary");
+                System.out.println("2. Description");
+                System.out.print("Selection: ");
+                int sourceChoice = Integer.parseInt(System.console().readLine());
+                
+                boolean source = (sourceChoice == 1) 
+                    ? true 
+                    : false;
+                
+                return QueryReader.createForXMLFile(file, source).read();
+            } else {
+                return QueryReader.createForTextFile(file).read();
+            }
+        } else {
+            return QueryReader.createForTerminal().read();
         }
-        
-        return queryReader.readFromConsole();
     }
 
     private static void processQueries(List<Query> queries) {
