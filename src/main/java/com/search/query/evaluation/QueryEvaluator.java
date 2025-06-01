@@ -4,6 +4,7 @@ import com.search.query.model.Query;
 import com.search.query.model.VocabularyTrie;
 import com.search.query.reader.VocabularyReader;
 import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 
 public class QueryEvaluator {
@@ -25,8 +26,7 @@ public class QueryEvaluator {
         loadDocumentInfo(new File(collectionIndexPath, "DocumentFile.txt"), documentEntries, documentNorms);
 
         // Open postings file
-        RandomAccessFile postingsFile = new RandomAccessFile(
-                new File(collectionIndexPath, "PostingFile.txt"), "r");
+        Path postingsFile = Path.of(collectionIndexPath + File.separator +"PostingFile.txt");
 
         this.context = new EvaluationContext(vocabulary, documentNorms, documentEntries, postingsFile);
 
@@ -46,6 +46,10 @@ public class QueryEvaluator {
                 documentNorms.put(docId, norm);
             }
         }
+    }
+    public String getModelName()
+    {
+        return retrievalModel.getModelName();
     }
 
     public void setRetrievalModel(RetrievalModel model) {
@@ -70,13 +74,5 @@ public class QueryEvaluator {
                     System.out.printf("DocID: %-10d Score: %-8.4f Path: %s%n",
                             entry.getKey(), entry.getValue(), docPath);
                 });
-    }
-
-    public void close() {
-        try {
-            context.getPostingsFile().close();
-        } catch (IOException e) {
-            System.err.println("Error closing postings file: " + e.getMessage());
-        }
     }
 }

@@ -6,7 +6,13 @@ import com.search.query.evaluation.QueryEvaluator;
 import com.search.query.evaluation.VectorSpaceModel;
 import com.search.query.model.Query;
 import com.search.query.reader.QueryReader;
+
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -32,11 +38,7 @@ public class QueryEvaluatorMain {
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            if (evaluator != null) {
-                evaluator.close();
-            }
-        }
+        } 
     }
 
     private static String getCollectionPath() throws Exception {
@@ -85,15 +87,50 @@ public class QueryEvaluatorMain {
 
     private static void processQueries(List<Query> queries) {
         final int MAX_RESULTS = 1000;
+        final String MODEL_NAME = evaluator.getModelName();
+        final String OUTPUT_FILE = FileManager.RESULT_DIR + "query_results.tsv";
         
-        for (Query query : queries) {
-            System.out.println("\nProcessing query: " + query.getQuery());
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE))) {
+            writer.write("QUERY_ID\tDOC_ID\tRANK\tSCORE\tMODEL_USED\n");
             
-            Map<Long, Double> results = evaluator.evaluate(query);
-            System.out.println("\nTop " + MAX_RESULTS + " results:");
-            evaluator.printResults(results, MAX_RESULTS);
-            
-            System.out.println("\n" + "-".repeat(80));
+            for (Query query : queries) {
+                System.out.println("\nProcessing query (ID: " + query.getId() + "): " + query.getQuery());
+                
+                long startTime = System.currentTimeMillis();
+                Map<Long, Double> results = evaluator.evaluate(query);
+                long duration = System.currentTimeMillis() - startTime;
+                
+                System.out.println("Evaluation took: " + duration/1000.0 + " seconds");
+                System.out.println("Writing results to: " + OUTPUT_FILE);
+                
+                // Sort results by score descending
+                List<Map.Entry<Long, Double>> sortedResults = new ArrayList<>(results.entrySet());
+                sortedResults.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
+                
+                int rank = 1;
+                double prevScore = Double.NaN; 
+
+                for (Map.Entry<Long, Double> entry : sortedResults) {
+                    if (rank > MAX_RESULTS) break;
+
+                    if (Double.compare(entry.getValue(), prevScore) != 0) {
+                        rank = sortedResults.indexOf(entry) + 1;
+                    }
+
+                    writer.write(String.format("%s\t%d\t%d\t%.6f\t%s%n",
+                        query.getId(),
+                        entry.getKey(),
+                        rank,
+                        entry.getValue(),
+                        MODEL_NAME));
+
+                    prevScore = entry.getValue();
+                }
+
+                writer.flush();
+            }
+        } catch (IOException e) {
+            System.err.println("Error writing results: " + e.getMessage());
         }
     }
 }
