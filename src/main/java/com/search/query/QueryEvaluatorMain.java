@@ -3,6 +3,7 @@ package com.search.query;
 import com.search.common.utils.FileManager;
 import com.search.common.utils.MemoryMonitor;
 import com.search.query.evaluation.QueryEvaluator;
+import com.search.query.evaluation.VectorSpaceModel;
 import com.search.query.model.Query;
 import com.search.query.reader.QueryReader;
 import java.io.File;
@@ -20,7 +21,7 @@ public class QueryEvaluatorMain {
             String collectionPath = getCollectionPath(args);
             
             // Initialize components
-            evaluator = new QueryEvaluator(collectionPath);
+            evaluator = new QueryEvaluator(collectionPath, new VectorSpaceModel());
             queryReader = new QueryReader();
 
             memMonitor.printStats();
