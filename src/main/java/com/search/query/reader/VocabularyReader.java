@@ -2,15 +2,16 @@ package com.search.query.reader;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 import com.search.query.model.VocabularyTrie;
 
 public class VocabularyReader {
     
     public void loadVocabulary(File vocabFile, VocabularyTrie trie) throws IOException {
-        try (BufferedReader br = new BufferedReader(new FileReader(vocabFile))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(vocabFile), "UTF-8"))) {
             String line;
             int lineCount = 0;
             

@@ -1,6 +1,7 @@
 package com.search.query;
 
 import com.search.common.utils.FileManager;
+import com.search.common.utils.MemoryMonitor;
 import com.search.query.evaluation.QueryEvaluator;
 import com.search.query.model.Query;
 import com.search.query.reader.QueryReader;
@@ -15,11 +16,15 @@ public class QueryEvaluatorMain {
     public static void main(String[] args) {
         try {
             // Get collection index path
+            MemoryMonitor memMonitor = new MemoryMonitor("Query Memory Estimator");
             String collectionPath = getCollectionPath(args);
             
             // Initialize components
             evaluator = new QueryEvaluator(collectionPath);
             queryReader = new QueryReader();
+
+            memMonitor.printStats();
+            memMonitor.printUsage();
 
             // Process queries
             List<Query> queries = getQueries(args);
@@ -52,7 +57,6 @@ public class QueryEvaluatorMain {
             return queryReader.readFromFile(queryFile);
         }
         
-        // Choose input mode
         System.out.println("Choose input method:");
         System.out.println("1. Interactive console input");
         System.out.println("2. File input");
@@ -65,7 +69,6 @@ public class QueryEvaluatorMain {
             return queryReader.readFromFile(file);
         }
         
-        // Default to console input
         return queryReader.readFromConsole();
     }
 

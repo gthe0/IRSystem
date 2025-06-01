@@ -21,6 +21,7 @@ buildNumber.properties
 results
 MiniCollection/
 MedicalCollection/
+CollectionIndex/
 
 ####################################
 # Don't Ignore the following

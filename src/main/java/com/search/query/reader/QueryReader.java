@@ -26,13 +26,15 @@ public class QueryReader {
     // Read interactive input from command line
     public List<Query> readFromConsole() {
         List<Query> queries = new ArrayList<>();
-        try (Scanner scanner = new Scanner(System.in)) {
-            System.out.println("Enter queries (Type "+ "s" +" to stop):");
+        try (Scanner scanner = new Scanner(System.in, "UTF-8")) {
+            System.out.println("Enter queries (Press \"s\" to stop):");
             int queryCount = 1;
             while (true) {
                 System.out.print("Query #" + queryCount + ": ");
                 String input = scanner.nextLine().trim();
                 if (input.equalsIgnoreCase("s")) break;
+                System.err.println(input);
+
                 processLine(input, queries);
                 queryCount++;
             }
@@ -49,6 +51,7 @@ public class QueryReader {
     // Core processing logic using TokenStream
     private void processLine(String line, List<Query> queries) {
         List<String> tokens = processLine(line);
+        System.err.println(tokens);
         if (!tokens.isEmpty()) {
             queries.add(new Query(queries.size() + 1, line ,tokens));
         }

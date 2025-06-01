@@ -1,10 +1,11 @@
 package com.search.query.model;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class VocabularyTrie {
-    private static final int ALPHABET_SIZE = 36; // a-z (26) + 0-9 (10)
-    
     private static class TrieNode {
-        TrieNode[] children = new TrieNode[ALPHABET_SIZE];
+        Map<Character, TrieNode> children = new HashMap<>();
         int df = -1;        // Document frequency
         long pointer = -1;  // File position pointer
     }
@@ -14,15 +15,8 @@ public class VocabularyTrie {
     public void insert(String term, int df, long pointer) {
         TrieNode current = root;
         for (char c : term.toCharArray()) {
-            int index = charToIndex(c);
-            if (index < 0 || index >= ALPHABET_SIZE) {
-                throw new IllegalArgumentException("Invalid term character: " + c + 
-                                                  " (only a-z and 0-9 allowed)");
-            }
-            if (current.children[index] == null) {
-                current.children[index] = new TrieNode();
-            }
-            current = current.children[index];
+            char normalized = normalizeChar(c);
+            current = current.children.computeIfAbsent(normalized, k -> new TrieNode());
         }
         current.df = df;
         current.pointer = pointer;
@@ -31,23 +25,24 @@ public class VocabularyTrie {
     public TermData search(String term) {
         TrieNode current = root;
         for (char c : term.toCharArray()) {
-            int index = charToIndex(c);
-            if (index < 0 || index >= ALPHABET_SIZE || current.children[index] == null) {
+            char normalized = normalizeChar(c);
+            TrieNode nextNode = current.children.get(normalized);
+            if (nextNode == null) {
                 return null;
             }
-            current = current.children[index];
+            current = nextNode;
         }
         return current.df != -1 ? new TermData(current.df, current.pointer) : null;
     }
     
-    // Handles both letters and digits
-    private int charToIndex(char c) {
+    private char normalizeChar(char c) {
         if (Character.isLetter(c)) {
-            return Character.toLowerCase(c) - 'a'; // a-z: 0-25
+            return Character.toLowerCase(c); // Case-insensitive handling
         } else if (Character.isDigit(c)) {
-            return 26 + (c - '0'); // 0-9: 26-35
+            return c; // Digits remain unchanged
         }
-        return -1; // Invalid character
+        throw new IllegalArgumentException("Invalid term character: '" + c + 
+                                           "' (only letters and digits allowed)");
     }
     
     public static class TermData {
