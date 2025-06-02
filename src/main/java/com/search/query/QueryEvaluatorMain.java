@@ -89,6 +89,7 @@ public class QueryEvaluatorMain {
         final int MAX_RESULTS = 1000;
         final String MODEL_NAME = evaluator.getModelName();
         final String OUTPUT_FILE = FileManager.RESULT_DIR + "query_results.tsv";
+        FileManager.ensureDirectoryExists(FileManager.RESULT_DIR);
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE))) {
             writer.write("QUERY_ID\tDOC_ID\tRANK\tSCORE\tMODEL_USED\n");
