@@ -92,7 +92,7 @@ public class QueryEvaluatorMain {
         FileManager.ensureDirectoryExists(FileManager.RESULT_DIR);
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE))) {
-            writer.write("QUERY_ID\tDOC_ID\tRANK\tSCORE\tMODEL_USED\n");
+            writer.write("QUERY_ID\tPLACE_HOLDER\tDOC_ID\tRANK\tSCORE\tMODEL_USED\n");
             
             for (Query query : queries) {
                 System.out.println("\nProcessing query (ID: " + query.getId() + "): " + query.getQuery());
@@ -118,7 +118,7 @@ public class QueryEvaluatorMain {
                         rank = sortedResults.indexOf(entry) + 1;
                     }
 
-                    writer.write(String.format("%s\t%d\t%d\t%.6f\t%s%n",
+                    writer.write(String.format("%s\t0\t%d\t%d\t%.6f\t%s%n",
                         query.getId(),
                         entry.getKey(),
                         rank,
