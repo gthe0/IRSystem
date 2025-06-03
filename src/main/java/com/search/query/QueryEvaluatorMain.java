@@ -3,7 +3,7 @@ package com.search.query;
 import com.search.common.utils.FileManager;
 import com.search.common.utils.MemoryMonitor;
 import com.search.query.evaluation.QueryEvaluator;
-import com.search.query.evaluation.VectorSpaceModel;
+import com.search.query.evaluation.IRetrievalModelFactory;
 import com.search.query.model.Query;
 import com.search.query.reader.QueryReader;
 
@@ -26,7 +26,7 @@ public class QueryEvaluatorMain {
             String collectionPath = getCollectionPath();
             
             // Initialize components
-            evaluator = new QueryEvaluator(collectionPath, new VectorSpaceModel());
+            evaluator = new QueryEvaluator(collectionPath, IRetrievalModelFactory.getModel("OkapiBM25"));
 
             memMonitor.printStats();
             memMonitor.printUsage();
@@ -53,17 +53,17 @@ public class QueryEvaluatorMain {
         System.out.println("1. Interactive console input");
         System.out.println("2. File input");
         System.out.print("Selection: ");
-        
+
         int choice = Integer.parseInt(System.console().readLine());
-        
+
         if (choice == 2) {
             System.out.println("Select query file:");
             File file = FileManager.showFileChooserForFile();
-            
+
             if (file == null) {
                 throw new Exception("No query file selected");
             }
-            
+
             if (file.getName().toLowerCase().endsWith(".xml")) {
                 // XML file detected - ask for source selection
                 System.out.println("Choose query source:");
@@ -71,11 +71,11 @@ public class QueryEvaluatorMain {
                 System.out.println("2. Description");
                 System.out.print("Selection: ");
                 int sourceChoice = Integer.parseInt(System.console().readLine());
-                
+
                 boolean source = (sourceChoice == 1) 
-                    ? true 
-                    : false;
-                
+                ? true 
+                : false;
+
                 return QueryReader.createForXMLFile(file, source).read();
             } else {
                 return QueryReader.createForTextFile(file).read();
@@ -90,44 +90,47 @@ public class QueryEvaluatorMain {
         final String MODEL_NAME = evaluator.getModelName();
         final String OUTPUT_FILE = FileManager.RESULT_DIR + "query_results.tsv";
         FileManager.ensureDirectoryExists(FileManager.RESULT_DIR);
-        
+
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE))) {
             writer.write("QUERY_ID\tPLACE_HOLDER\tDOC_ID\tRANK\tSCORE\tMODEL_USED\n");
-            
+
             for (Query query : queries) {
                 System.out.println("\nProcessing query (ID: " + query.getId() + "): " + query.getQuery());
-                
+
                 long startTime = System.currentTimeMillis();
                 Map<Long, Double> results = evaluator.evaluate(query);
                 long duration = System.currentTimeMillis() - startTime;
-                
+
                 System.out.println("Evaluation took: " + duration/1000.0 + " seconds");
                 System.out.println("Writing results to: " + OUTPUT_FILE);
-                
+
                 // Sort results by score descending
                 List<Map.Entry<Long, Double>> sortedResults = new ArrayList<>(results.entrySet());
                 sortedResults.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
-                
-                int rank = 1;
-                double prevScore = Double.NaN; 
 
-                for (Map.Entry<Long, Double> entry : sortedResults) {
-                    if (rank > MAX_RESULTS) break;
+                int rank = 0;
+                double prevScore = Double.NaN;
+                int count = 0; // Tracks total results written
 
-                    if (Double.compare(entry.getValue(), prevScore) != 0) {
-                        rank = sortedResults.indexOf(entry) + 1;
+                for (int i = 0; i < sortedResults.size() && count < MAX_RESULTS; i++) {
+                    Map.Entry<Long, Double> entry = sortedResults.get(i);
+                    double currentScore = entry.getValue();
+
+                    // Update rank when score changes or at first entry
+                    if (i == 0 || Double.compare(currentScore, prevScore) != 0) {
+                        rank = i + 1; 
                     }
-
+    
                     writer.write(String.format("%s\t0\t%d\t%d\t%.6f\t%s%n",
                         query.getId(),
                         entry.getKey(),
                         rank,
-                        entry.getValue(),
+                        currentScore,
                         MODEL_NAME));
 
-                    prevScore = entry.getValue();
+                    prevScore = currentScore;
+                    count++; 
                 }
-
                 writer.flush();
             }
         } catch (IOException e) {

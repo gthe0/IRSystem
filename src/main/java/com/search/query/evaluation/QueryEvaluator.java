@@ -23,18 +23,20 @@ public class QueryEvaluator {
         // Load document norms
         List<String> documentEntries = new ArrayList<>();
         Map<Long, Double> documentNorms = new HashMap<>();
-        loadDocumentInfo(new File(collectionIndexPath, "DocumentFile.txt"), documentEntries, documentNorms);
+        Map<Long, Double> documentLengths = new HashMap<>();
+        Map<Long, Double> documentMaxFreqs = new HashMap<>();
+        loadDocumentInfo(new File(collectionIndexPath, "DocumentFile.txt"), documentEntries, documentNorms, documentLengths, documentMaxFreqs);
 
         // Open postings file
         Path postingsFile = Path.of(collectionIndexPath + File.separator +"PostingFile.txt");
 
-        this.context = new EvaluationContext(vocabulary, documentNorms, documentEntries, postingsFile);
+        this.context = new EvaluationContext(vocabulary, documentNorms, documentLengths, documentMaxFreqs,documentEntries, postingsFile);
 
         this.retrievalModel = retrievalModel;
 
     }
 
-    private void loadDocumentInfo(File docFile, List<String> documentEntries, Map<Long, Double> documentNorms)
+    private void loadDocumentInfo(File docFile, List<String> documentEntries,  Map<Long, Double> documentNorms, Map<Long, Double> documentLengths, Map<Long, Double> documentMaxFreqs)
             throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(docFile))) {
             String line;
@@ -42,11 +44,16 @@ public class QueryEvaluator {
                 documentEntries.add(line);
                 String[] parts = line.split(" ");
                 long docId = Long.parseLong(parts[0]);
-                double norm = Double.parseDouble(parts[2]);
+                double norm = Double.parseDouble(parts[4]);
+                double length = Double.parseDouble(parts[3]);
+                double maxfreq = Double.parseDouble(parts[2]);
                 documentNorms.put(docId, norm);
+                documentLengths.put(docId, length);
+                documentMaxFreqs.put(docId,maxfreq);
             }
         }
     }
+
     public String getModelName()
     {
         return retrievalModel.getModelName();

@@ -10,6 +10,8 @@ public class Document {
     private TreeMap<String, Integer> tf; // Term frequencies passed in directly
     private String docPath;
     private Integer pmcdId;
+    private Integer maxTf;
+    private Integer length;
 
     public Document(Integer pmcdId) {
         this(pmcdId, null, new TreeMap<>());
@@ -46,6 +48,27 @@ public class Document {
     public TreeMap<String, Integer> getTf() {
         return tf;
     }
+
+    public int getDocumentLength() {
+        return length;
+    }
+
+    public int getMaxFrequency() {
+        return maxTf;
+    }
+
+    public void calcDocumentLength() {
+        int length = 0;
+        for (int freq : tf.values()) {
+            length += freq;
+        }
+        this.length = length;
+    }
+
+    public void calcMaxFrequency() {
+        this.maxTf = tf.values().stream().max(Integer::compare).orElse(0);
+    }
+
 
     // Print global frequency of each term, followed by its frequency in each field
     public void printTermFrequencies() {

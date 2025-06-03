@@ -10,17 +10,20 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 
-public class VectorSpaceModel implements RetrievalModel {
-  private static final int MAX_RESULTS = 1000;
+public class OkapiBM25 implements RetrievalModel {
+    private static final int MAX_RESULTS = 1000;
     private static final int BUFFER_SIZE = 64 * 1024; // 64KB buffer
-
+    private static final double K1 = 1.2;
+    private static final double B = 0.75;
+    
     @Override
     public Map<Long, Double> evaluate(Query query, EvaluationContext context) {
         PriorityQueue<Map.Entry<Long, Double>> topResults = 
             new PriorityQueue<>(MAX_RESULTS, Map.Entry.comparingByValue());
         
-        Map<String, Double> queryWeights = calculateQueryWeights(query, context);
-        double queryNorm = calculateQueryNorm(queryWeights);
+        // Precompute collection statistics
+        double avgDocLength = calculateAverageDocLength(context);
+        Map<String, Double> idfCache = new HashMap<>();
         Map<Long, Double> accumulators = new HashMap<>(1024);
 
         try (FileChannel channel = FileChannel.open(context.getPostingsPath(), 
@@ -28,31 +31,31 @@ public class VectorSpaceModel implements RetrievalModel {
             
             ByteBuffer buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
             
-            for (var entry : queryWeights.entrySet()) {
-                String term = entry.getKey();
-                double queryWeight = entry.getValue();
+            for (String term : query.getTermFrequency().keySet()) {
                 TermData termData = context.getVocabulary().search(term);
                 if (termData == null) continue;
 
-                processTermPostings(channel, buffer, termData, queryWeight, accumulators, context);
+                // Compute IDF if not cached
+                double idf = idfCache.computeIfAbsent(term, 
+                    k -> calculateIDF(termData.df, context.getTotalDocuments()));
+                
+                processTermPostings(channel, buffer, termData, idf, accumulators, 
+                                   context, avgDocLength);
             }
         } catch (IOException e) {
             System.err.println("I/O error: " + e.getMessage());
             return Map.of();
         }
 
-        // Normalize scores and collect top results
+        // Collect top results
         for (var entry : accumulators.entrySet()) {
-            long docId = entry.getKey();
             double score = entry.getValue();
-            double docNorm = context.getDocumentNorms().getOrDefault(docId, 1.0);
-            double normalized = score / (queryNorm * docNorm);
             
             if (topResults.size() < MAX_RESULTS) {
-                topResults.offer(Map.entry(docId, normalized));
-            } else if (normalized > topResults.peek().getValue()) {
+                topResults.offer(Map.entry(entry.getKey(), score));
+            } else if (score > topResults.peek().getValue()) {
                 topResults.poll();
-                topResults.offer(Map.entry(docId, normalized));
+                topResults.offer(Map.entry(entry.getKey(), score));
             }
         }
 
@@ -65,14 +68,26 @@ public class VectorSpaceModel implements RetrievalModel {
         return results;
     }
 
-    public String getModelName()
-    {
-        return "VSM";
+    public String getModelName() {
+        return "OkapiBM25";
+    }
+
+    private double calculateAverageDocLength(EvaluationContext context) {
+        return context.getDocumentLengths().values().stream()
+            .mapToDouble(Double::doubleValue)
+            .average()
+            .orElse(1.0);
+    }
+
+    private double calculateIDF(int docFreq, long totalDocs) {
+        return Math.log(1 + (totalDocs - docFreq + 0.5) / (docFreq + 0.5));
     }
 
     private void processTermPostings(FileChannel channel, ByteBuffer buffer,
-                                    TermData termData, double queryWeight,
-                                    Map<Long, Double> accumulators, EvaluationContext context) throws IOException {
+                                    TermData termData, double idf,
+                                    Map<Long, Double> accumulators,
+                                    EvaluationContext context, 
+                                    double avgDocLength) throws IOException {
         long position = termData.pointer;
         int remaining = termData.df;
         StringBuilder sb = new StringBuilder(128);
@@ -86,7 +101,7 @@ public class VectorSpaceModel implements RetrievalModel {
             while (buffer.hasRemaining() && remaining > 0) {
                 char c = (char) buffer.get();
                 if (c == '\n') {
-                    processPostingLine(sb.toString(), queryWeight, accumulators, context, termData);
+                    processPostingLine(sb.toString(), idf, accumulators, context, avgDocLength);
                     sb.setLength(0);
                     remaining--;
                 } else {
@@ -99,46 +114,33 @@ public class VectorSpaceModel implements RetrievalModel {
         
         // Process last line if any
         if (sb.length() > 0 && remaining > 0) {
-            processPostingLine(sb.toString(), queryWeight, accumulators, context, termData);
+            processPostingLine(sb.toString(), idf, accumulators, context, avgDocLength);
         }
     }
 
-    private void processPostingLine(String line, double queryWeight, 
+    private void processPostingLine(String line, double idf, 
                                     Map<Long, Double> accumulators,
                                     EvaluationContext context,
-                                    TermData termData) {
+                                    double avgDocLength) {
         int firstSpace = line.indexOf(' ');
         if (firstSpace <= 0) return;
         
         try {
             long docId = Long.parseLong(line.substring(0, firstSpace));
             int secondSpace = line.indexOf(' ', firstSpace + 1);
-            double docTf = Double.parseDouble(line.substring(firstSpace + 1, secondSpace));
-            double docWeight = docTf * Math.log(context.getTotalDocuments() / (double) termData.df) / context.getDocumentMaxFrequenc().get(docId);
-
-            accumulators.merge(docId, queryWeight * docWeight , Double::sum);
+            double termFreq = Double.parseDouble(line.substring(firstSpace + 1, secondSpace));
+            
+            // Get document length
+            double docLength = context.getDocumentLengths().getOrDefault(docId, avgDocLength);
+            
+            // Calculate BM25 component
+            double numerator = termFreq * (K1 + 1);
+            double denominator = termFreq + K1 * (1 - B + B * (docLength / avgDocLength));
+            double termScore = idf * (numerator / denominator);
+            
+            accumulators.merge(docId, termScore, Double::sum);
         } catch (NumberFormatException | IndexOutOfBoundsException e) {
             System.err.println("Invalid posting line: " + line);
         }
-    }
-
-    private Map<String, Double> calculateQueryWeights(Query query, EvaluationContext context) {
-        Map<String, Double> weights = new HashMap<>();
-        for (var entry : query.getTermFrequency().entrySet()) {
-            String term = entry.getKey();
-            TermData termData = context.getVocabulary().search(term);
-            if (termData == null)
-                continue;
-
-            double idf = Math.log(context.getTotalDocuments() / (double) termData.df);
-            weights.put(term, entry.getValue() * idf);
-        }
-        return weights;
-    }
-
-    private double calculateQueryNorm(Map<String, Double> queryWeights) {
-        return Math.sqrt(queryWeights.values().stream()
-                .mapToDouble(v -> v * v)
-                .sum());
     }
 }

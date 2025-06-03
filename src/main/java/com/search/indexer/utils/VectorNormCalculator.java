@@ -126,7 +126,9 @@ public class VectorNormCalculator {
             String line;
             while ((line = reader.readLine()) != null) {
                 long docId = getDocId(line);
-                double norm = Math.sqrt(vectorNorms.getOrDefault(docId, 0.0));
+                long docMaxFreq = getDocMaxFreq(line);
+
+                double norm = docMaxFreq != 0 ?  Math.sqrt(vectorNorms.getOrDefault(docId, 0.0))/docMaxFreq : 0.0;
                 writer.write(line + " " + norm + "\n");
             }
         }
@@ -136,5 +138,9 @@ public class VectorNormCalculator {
 
     private long getDocId(String documentLine) {
         return Long.parseLong(documentLine.split(" ")[0]);
+    }
+
+    private long getDocMaxFreq(String documentLine) {
+        return Long.parseLong(documentLine.split(" ")[2]);
     }
 }

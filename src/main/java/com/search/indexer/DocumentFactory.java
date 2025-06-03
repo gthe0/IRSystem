@@ -31,6 +31,9 @@ public class DocumentFactory {
         document.addField( new Field( FieldType.AUTHOR,    tokenizeContent(new SimpleTokenStream(xmlFile.getAuthors().toString()), documentTf)));
         document.addField( new Field( FieldType.CATEGORY,  tokenizeContent(new SimpleTokenStream(xmlFile.getCategories().toString()), documentTf)));
 
+        document.calcDocumentLength();
+        document.calcMaxFrequency();
+
         return document;
     }
 

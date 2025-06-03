@@ -48,7 +48,10 @@ public class FileBuilder {
 
             // First write all document metadata
             for (Document document : corpus) {
-                docWriter.write(document.getPmcdId() + " " + document.getDocPath() + "\n");
+                docWriter.write(document.getPmcdId()  + " " +
+                                document.getDocPath() + " " +
+                                document.getMaxFrequency() + " " +
+                                document.getDocumentLength() +"\n");
             }
 
             // Then process vocabulary and postings
