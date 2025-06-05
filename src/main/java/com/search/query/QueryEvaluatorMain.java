@@ -43,7 +43,7 @@ public class QueryEvaluatorMain {
 
     private static String getCollectionPath() throws Exception {
         System.out.println("Select the Collection Index directory:");
-        File dir = FileManager.showFileChooserForDirectory();
+        File dir = FileManager.showFileChooserForDirectory(FileManager.RESULT_DIR);
         if (dir == null) throw new Exception("No collection index selected");
         return dir.getAbsolutePath();
     }
@@ -58,7 +58,7 @@ public class QueryEvaluatorMain {
 
         if (choice == 2) {
             System.out.println("Select query file:");
-            File file = FileManager.showFileChooserForFile();
+            File file = FileManager.showFileChooserForFile(FileManager.RESOURCE_DIR);
 
             if (file == null) {
                 throw new Exception("No query file selected");

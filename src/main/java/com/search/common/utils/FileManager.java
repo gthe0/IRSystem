@@ -5,8 +5,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 public class FileManager {
 
@@ -15,11 +13,11 @@ public class FileManager {
     public static final String RESULT_DIR = PARENT_DIR + "src" + File.separator + "main" + File.separator + "results" + File.separator;
 
     // Shows a file or directory chooser based on mode
-    private static File showFileChooser(int selectionMode, String dialogTitle) {
+    private static File showFileChooser(int selectionMode, String dialogTitle, String initialDirPath) {
         JFileChooser fileChooser = new JFileChooser();
 
         // Set initial directory
-        File initialDirectory = new File(RESOURCE_DIR);
+        File initialDirectory = new File(initialDirPath);
         if (!ensureDirectoryExists(initialDirectory.getAbsolutePath())) {
             System.out.println("Resources directory not found. Defaulting to current working directory.");
             initialDirectory = new File(PARENT_DIR);
@@ -40,13 +38,13 @@ public class FileManager {
     }
 
     // Public method for file chooser
-    public static File showFileChooserForFile() {
-        return showFileChooser(JFileChooser.FILES_ONLY, "Select a File");
+    public static File showFileChooserForFile(String initialDirPath) {
+        return showFileChooser(JFileChooser.FILES_ONLY, "Select a File", initialDirPath);
     }
 
     // Public method for directory chooser
-    public static File showFileChooserForDirectory() {
-        return showFileChooser(JFileChooser.DIRECTORIES_ONLY, "Select a Directory");
+    public static File showFileChooserForDirectory(String initialDirPath) {
+        return showFileChooser(JFileChooser.DIRECTORIES_ONLY, "Select a Directory", initialDirPath);
     }
 
     // Get a batch iterator for a directory
@@ -158,32 +156,6 @@ public class FileManager {
         }
 
         return handleEOF(buffer, foundCR, currentPosition);
-    }
-
-    /**
-     * Reads multiple UTF-8 encoded lines starting at specified position
-     * @param file Opened RandomAccessFile instance
-     * @param position Starting byte position
-     * @param maxLines Maximum number of lines to read
-     * @return List of read lines (may be shorter than maxLines if EOF reached)
-     */
-    public static List<String> readLinesFromPosition(RandomAccessFile file, long position, int maxLines) 
-        throws IOException {
-        
-        List<String> results = new ArrayList<>();
-        long currentPosition = position;
-        int linesRead = 0;
-
-        while (linesRead < maxLines) {
-            LineResult result = readLineFrom(file, currentPosition);
-            if (result == null) break;
-            
-            results.add(result.getLine());
-            currentPosition = result.getNextPosition();
-            linesRead++;
-        }
-
-        return results;
     }
 
     public static void deleteDirectory(File dir) {

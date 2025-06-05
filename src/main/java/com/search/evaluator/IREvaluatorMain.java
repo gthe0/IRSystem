@@ -14,7 +14,7 @@ public class IREvaluatorMain {
         try {
             // Select qrels file
             System.out.println("Select qrels file (relevance judgments)");
-            File qrelsFile = FileManager.showFileChooserForFile();
+            File qrelsFile = FileManager.showFileChooserForFile(FileManager.RESOURCE_DIR);
             if (qrelsFile == null) {
                 JOptionPane.showMessageDialog(null, "No qrels file selected. Exiting.");
                 return;
@@ -26,7 +26,7 @@ public class IREvaluatorMain {
             
             while (selection == JOptionPane.YES_OPTION) {
                 System.out.println("Select a result file");
-                File resultFile = FileManager.showFileChooserForFile();
+                File resultFile = FileManager.showFileChooserForFile(FileManager.RESULT_DIR);
                 
                 if (resultFile != null) {
                     resultFiles.add(resultFile);

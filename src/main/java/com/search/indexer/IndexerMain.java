@@ -37,11 +37,11 @@ public class IndexerMain {
             System.out.println("Using conservative batch size: " + BATCH_SIZE);
             
             System.out.println("Select the directory containing stopword files:");
-            File stopwordDirectory = FileManager.showFileChooserForDirectory();
+            File stopwordDirectory = FileManager.showFileChooserForDirectory(FileManager.RESOURCE_DIR);
             StopWordManager.loadStopWords(stopwordDirectory);
 
             System.out.println("Select the directory containing the XML documents:");
-            File documentDirectory = FileManager.showFileChooserForDirectory();
+            File documentDirectory = FileManager.showFileChooserForDirectory(FileManager.RESOURCE_DIR);
 
             FileBatchIterator fileBatchIterator = FileManager.getFileBatchIterator(documentDirectory, BATCH_SIZE);
             List<Future<?>> futures = new ArrayList<>();
