@@ -1,4 +1,4 @@
-package com.search.indexer.model;
+package com.search.common.document;
 
 import gr.uoc.csd.hy463.NXMLFileReader;
 import java.io.File;
@@ -12,6 +12,7 @@ import java.util.TreeSet;
 
 import com.search.common.token.SimpleTokenStream;
 import com.search.common.token.TokenStream;
+import com.search.common.utils.StopWordManager;
 
 public class DocumentFactory {
     
@@ -23,13 +24,13 @@ public class DocumentFactory {
         Document                 document   = new Document(Integer.parseInt(xmlFile.getPMCID()), file.getAbsolutePath(), documentTf);
 
         // Add fields to the document
-        document.addField( new Field( FieldType.TITLE,     tokenizeContent(new SimpleTokenStream(xmlFile.getTitle()), documentTf)));
-        document.addField( new Field( FieldType.ABSTRACT,  tokenizeContent(new SimpleTokenStream(xmlFile.getAbstr()), documentTf)));
-        document.addField( new Field( FieldType.BODY,      tokenizeContent(new SimpleTokenStream(xmlFile.getBody()), documentTf)));
-        document.addField( new Field( FieldType.JOURNAL,   tokenizeContent(new SimpleTokenStream(xmlFile.getJournal()), documentTf)));
-        document.addField( new Field( FieldType.PUBLISHER, tokenizeContent(new SimpleTokenStream(xmlFile.getPublisher()), documentTf)));
-        document.addField( new Field( FieldType.AUTHOR,    tokenizeContent(new SimpleTokenStream(xmlFile.getAuthors().toString()), documentTf)));
-        document.addField( new Field( FieldType.CATEGORY,  tokenizeContent(new SimpleTokenStream(xmlFile.getCategories().toString()), documentTf)));
+        document.addField( new Field( FieldType.TITLE,     tokenizeContent(new SimpleTokenStream(xmlFile.getTitle(), StopWordManager.getStopWords()), documentTf)));
+        document.addField( new Field( FieldType.ABSTRACT,  tokenizeContent(new SimpleTokenStream(xmlFile.getAbstr(), StopWordManager.getStopWords()), documentTf)));
+        document.addField( new Field( FieldType.BODY,      tokenizeContent(new SimpleTokenStream(xmlFile.getBody(),  StopWordManager.getStopWords()), documentTf)));
+        document.addField( new Field( FieldType.JOURNAL,   tokenizeContent(new SimpleTokenStream(xmlFile.getJournal(), StopWordManager.getStopWords()), documentTf)));
+        document.addField( new Field( FieldType.PUBLISHER, tokenizeContent(new SimpleTokenStream(xmlFile.getPublisher(), StopWordManager.getStopWords()), documentTf)));
+        document.addField( new Field( FieldType.AUTHOR,    tokenizeContent(new SimpleTokenStream(xmlFile.getAuthors().toString(), StopWordManager.getStopWords()), documentTf)));
+        document.addField( new Field( FieldType.CATEGORY,  tokenizeContent(new SimpleTokenStream(xmlFile.getCategories().toString(), StopWordManager.getStopWords()), documentTf)));
 
         document.calcDocumentLength();
         document.calcMaxFrequency();

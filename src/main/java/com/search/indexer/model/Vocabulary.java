@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.search.common.document.Document;
+
 public class Vocabulary {
     private HashMap<String, TreeSet<Integer>> termToDocIds; // Mapping of terms to PMCID (document IDs)
 

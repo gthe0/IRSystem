@@ -1,5 +1,7 @@
 package com.search.indexer;
 
+import com.search.common.document.Document;
+import com.search.common.document.DocumentFactory;
 import com.search.common.utils.FileBatchIterator;
 import com.search.common.utils.FileManager;
 import com.search.common.utils.StopWordManager;
@@ -8,8 +10,6 @@ import com.search.indexer.utils.FileBuilder;
 import com.search.indexer.utils.FileMerger;
 import com.search.indexer.utils.VectorNormCalculator;
 import com.search.indexer.model.Corpus;
-import com.search.indexer.model.Document;
-import com.search.indexer.model.DocumentFactory;
 import com.search.indexer.utils.FileBatchCollector;
 
 import java.io.File;

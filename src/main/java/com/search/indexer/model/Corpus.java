@@ -1,6 +1,9 @@
 package com.search.indexer.model;
 
 import java.util.TreeMap;
+
+import com.search.common.document.Document;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;

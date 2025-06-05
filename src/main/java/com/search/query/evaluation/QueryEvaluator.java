@@ -63,6 +63,11 @@ public class QueryEvaluator {
         return retrievalModel.getModelName();
     }
 
+    public EvaluationContext getEvaluationContext()
+    {
+        return context;
+    }
+
     public void setRetrievalModel(RetrievalModel model) {
         this.retrievalModel = model;
     }

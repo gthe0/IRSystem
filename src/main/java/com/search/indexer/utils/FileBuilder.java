@@ -4,11 +4,11 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import com.search.common.document.Document;
+import com.search.common.document.Field;
+import com.search.common.document.FieldType;
 import com.search.common.utils.FileManager;
 import com.search.indexer.model.Corpus;
-import com.search.indexer.model.Document;
-import com.search.indexer.model.Field;
-import com.search.indexer.model.FieldType;
 import com.search.indexer.model.Vocabulary;
 
 public class FileBuilder {
