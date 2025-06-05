@@ -1,5 +1,3 @@
-import sys
-
 def read_data(file_path):
     """Reads numeric values from the second column of a file."""
     values = []
@@ -35,11 +33,7 @@ def compute_statistics(values):
 
 def main():
     """Main function to handle user input and display results."""
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <file_path>")
-        return
-    
-    file_path = sys.argv[1]
+    file_path = input("Enter the path to the file: ").strip()  # Prompt user for file path
     values = read_data(file_path)
     average, minimum, maximum = compute_statistics(values)
 

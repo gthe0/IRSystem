@@ -22,7 +22,7 @@ public class TopicReadingStrategy implements QueryReadingStrategy {
         List<Topic> topics = TopicsReader.readTopics(xmlFile.getAbsolutePath());
         
         for (Topic topic : topics) {
-            String text = readSummary ? topic.getSummary() : topic.getDescription();
+            String text = topic.getType() + (readSummary ? topic.getSummary() : topic.getDescription());
             
             if (text == null || text.isBlank()) continue;
             
