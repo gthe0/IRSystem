@@ -15,8 +15,8 @@ public class IRetrievalModelFactory {
         RetrievalModel model = modelMap.get(modelName);
     
         if (model == null) {
-            System.err.println("Unsupported encoder type: " + modelName +
-                               ".Defaulting to Vector Space Model");
+            System.err.println("Unsupported encoder type: " + modelName + ".\n" +
+                               "Defaulting to Vector Space Model");
 
             model = modelMap.get("VSM");
         }

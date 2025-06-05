@@ -31,7 +31,19 @@ public class QueryEvaluatorMain {
             File file = FileManager.showFileChooserForDirectory(FileManager.RESOURCE_DIR);
             StopWordManager.loadStopWords(file);
 
-            evaluator = new QueryEvaluator(collectionPath, IRetrievalModelFactory.getModel("OkapiBM25"));
+            String[] options = {"OkapiBM25", "VSM"};
+            int choice = JOptionPane.showOptionDialog(
+                null,
+                "Choose Retrieval model:",
+                "Retrieval Model",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]
+            );
+
+            evaluator = new QueryEvaluator(collectionPath, IRetrievalModelFactory.getModel(options[choice]));
 
             // Process queries
             List<Query> queries = getQueries();
@@ -98,10 +110,12 @@ public class QueryEvaluatorMain {
     private static void processQueries(List<Query> queries) {
         final int MAX_RESULTS = 1000;
         final String MODEL_NAME = evaluator.getModelName();
-        final String OUTPUT_FILE = FileManager.RESULT_DIR + "query_results.tsv";
+        final String TIMING_FILE = FileManager.RESULT_DIR + "query_time_" + MODEL_NAME + ".tsv";
+        final String OUTPUT_FILE = FileManager.RESULT_DIR + "query_results_" + MODEL_NAME + ".tsv";
         FileManager.ensureDirectoryExists(FileManager.RESULT_DIR);
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE));
+             BufferedWriter logger = new BufferedWriter(new FileWriter(TIMING_FILE))) {
             writer.write("QUERY_ID\tPLACE_HOLDER\tDOC_ID\tRANK\tSCORE\tMODEL_USED\n");
 
             for (Query query : queries) {
@@ -116,6 +130,9 @@ public class QueryEvaluatorMain {
                 long duration = System.currentTimeMillis() - startTime;
                 System.out.println("Evaluation took: " + duration/1000.0 + " seconds");
                 System.out.println("Writing results to: " + OUTPUT_FILE);
+                logger.write(String.format("%s\t%.6f%n",
+                        query.getId(),
+                        duration/1000.0));
 
                 // Sort results by score descending
                 List<Map.Entry<Long, Double>> sortedResults = new ArrayList<>(results.entrySet());
