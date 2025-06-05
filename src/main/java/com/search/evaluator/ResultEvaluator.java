@@ -135,30 +135,37 @@ public class ResultEvaluator {
     }
 
     private double calculateNDCG(List<ResultEntry> results, Map<String, Integer> qrels) {
-        final int k = 10;
-        double dcg = 0.0;
-        
-        // Calculate DCG@10
-        int size = Math.min(k, results.size());
-        for (int i = 0; i < size; i++) {
-            int rank = i + 1;
-            String docId = results.get(i).docId;
-            int rel = qrels.getOrDefault(docId, 0);
-            dcg += rel * (Math.log(2) / Math.log(rank + 1));
-        }
-        
-        // Calculate IDCG@10
-        List<Integer> gains = qrels.values().stream()
-            .sorted(Comparator.reverseOrder())
-            .limit(k)
+        // Filter out unjudged documents while maintaining order
+        List<ResultEntry> judgedResults = results.stream()
+            .filter(entry -> qrels.containsKey(entry.docId))
             .collect(Collectors.toList());
         
-        double idcg = 0.0;
-        for (int i = 0; i < gains.size(); i++) {
-            int rank = i + 1;
-            idcg += gains.get(i) * (Math.log(2) / Math.log(rank + 1));
+        if (judgedResults.isEmpty()) return 0.0;
+
+        // Calculate DCG of actual ranking
+        double dcg = 0.0;
+        for (int i = 0; i < judgedResults.size(); i++) {
+            int rel = qrels.get(judgedResults.get(i).docId);
+            if (i == 0) {
+                dcg += rel;
+            } else {
+                dcg += rel / (Math.log(i + 1) / Math.log(2));
+            }
         }
+
+        // Calculate ideal DCG (IDCG)
+        List<Integer> relevances = new ArrayList<>(qrels.values());
+        Collections.sort(relevances, Collections.reverseOrder());
         
+        double idcg = 0.0;
+        for (int i = 0; i < Math.min(judgedResults.size(), relevances.size()); i++) {
+            if (i == 0) {
+                idcg += relevances.get(i);
+            } else {
+                idcg += relevances.get(i) / (Math.log(i + 1) / Math.log(2));
+            }
+        }
+
         return (idcg > 0) ? dcg / idcg : 0.0;
     }
 

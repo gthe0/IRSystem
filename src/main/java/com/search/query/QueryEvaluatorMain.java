@@ -57,6 +57,7 @@ public class QueryEvaluatorMain {
 
     private static String getCollectionPath() throws Exception {
         JOptionPane.showMessageDialog(null, "Select the Collection Index directory", "Collection Path", JOptionPane.INFORMATION_MESSAGE);
+        FileManager.ensureDirectoryExists(FileManager.RESULT_DIR);
         File dir = FileManager.showFileChooserForDirectory(FileManager.RESULT_DIR);
         if (dir == null) throw new Exception("No collection index selected");
         return dir.getAbsolutePath();
@@ -110,12 +111,12 @@ public class QueryEvaluatorMain {
     private static void processQueries(List<Query> queries) {
         final int MAX_RESULTS = 1000;
         final String MODEL_NAME = evaluator.getModelName();
-        final String TIMING_FILE = FileManager.RESULT_DIR + "query_time_" + MODEL_NAME + ".tsv";
-        final String OUTPUT_FILE = FileManager.RESULT_DIR + "query_results_" + MODEL_NAME + ".tsv";
-        FileManager.ensureDirectoryExists(FileManager.RESULT_DIR);
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE));
-             BufferedWriter logger = new BufferedWriter(new FileWriter(TIMING_FILE))) {
+        final String EVALS_FILE  = FileManager.RESULT_DIR +File.separator + "retrieval";
+        final String OUTPUT_FILE = EVALS_FILE + File.separator + "query_results_" + MODEL_NAME + ".tsv";
+        FileManager.ensureDirectoryExists(EVALS_FILE);
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE))) {
             writer.write("QUERY_ID\tPLACE_HOLDER\tDOC_ID\tRANK\tSCORE\tMODEL_USED\n");
 
             for (Query query : queries) {
@@ -130,9 +131,6 @@ public class QueryEvaluatorMain {
                 long duration = System.currentTimeMillis() - startTime;
                 System.out.println("Evaluation took: " + duration/1000.0 + " seconds");
                 System.out.println("Writing results to: " + OUTPUT_FILE);
-                logger.write(String.format("%s\t%.6f%n",
-                        query.getId(),
-                        duration/1000.0));
 
                 // Sort results by score descending
                 List<Map.Entry<Long, Double>> sortedResults = new ArrayList<>(results.entrySet());
