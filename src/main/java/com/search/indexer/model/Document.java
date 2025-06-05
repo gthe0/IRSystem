@@ -1,4 +1,4 @@
-package com.search.indexer;
+package com.search.indexer.model;
 
 import java.util.HashMap;
 import java.util.Map;

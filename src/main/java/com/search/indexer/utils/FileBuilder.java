@@ -5,11 +5,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import com.search.common.utils.FileManager;
-import com.search.indexer.Corpus;
-import com.search.indexer.Document;
-import com.search.indexer.Field;
-import com.search.indexer.FieldType;
-import com.search.indexer.Vocabulary;
+import com.search.indexer.model.Corpus;
+import com.search.indexer.model.Document;
+import com.search.indexer.model.Field;
+import com.search.indexer.model.FieldType;
+import com.search.indexer.model.Vocabulary;
 
 public class FileBuilder {
     private static final String POSTING_FILE_NAME = "PostingFile_Batch_";

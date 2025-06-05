@@ -1,4 +1,4 @@
-package com.search.indexer;
+package com.search.indexer.model;
 
 public enum FieldType {
     TITLE(0),

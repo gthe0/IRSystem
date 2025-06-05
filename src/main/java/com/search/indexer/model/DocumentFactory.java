@@ -1,4 +1,4 @@
-package com.search.indexer;
+package com.search.indexer.model;
 
 import gr.uoc.csd.hy463.NXMLFileReader;
 import java.io.File;

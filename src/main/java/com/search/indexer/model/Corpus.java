@@ -1,4 +1,4 @@
-package com.search.indexer;
+package com.search.indexer.model;
 
 import java.util.TreeMap;
 import java.util.Iterator;
